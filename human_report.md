@@ -2,7 +2,7 @@
 
 記載順は日付の降順
 
-# 20260919
+# 20260920
 
 LLMに聞いたところ，以下のsystem callを使うとTCPサーバーを作れるとのこと．
 これらをmanで読んでいく
@@ -22,12 +22,17 @@ manコマンドでシステムコールを調べるときは，2を指定する�
 まずはTCP echoサーバー作れとのことだったので従う
 
 さっきのシステムコールを記載の順序で使うらしい
-1. socketでfdを取得
-1. setsockoptでオプションを指定する
-1. bindで
-1. listenで
-1. acceptで
-1.
+1. socket()でsocket（に対応したfd）を取得
+1. setsockoptでsocketにオプションを指定する. ip/tcp/udpなどいろいろ指定できる
+    - ipのオプション
+    - tcpのオプション
+    - udpのオプション
+1. bindでsocketにip-addressとportの組みを紐づける（あるいはunix-socketのfilepath）
+1. listenで接続の受付を開始する．キューの長さを指定できる．
+1. acceptで接続を別のsocket（に対応したfd）として受け取る
+1. recv/readで接続から読み出す．TCPの場合はbyte-streamとして読み出せる
+1. send/writeで接続へ書き込む．
+1. closeでsocket（と紐づくfd）を解放する
 
 ## socket
 とりあえず以下はプログラムを書くときに使うと思うのでコピペしておく
@@ -104,10 +109,26 @@ SYNOPSIS
 ```
 
 ## recv/read
+recv/readはacceptで取得したsocketから，byte streamを読み出す．読み出すbyte数を指定できるが，指定した数が読み込めないときもある．
+返り値が`0`になるまで繰り返し読むことでEOFとなったことを検知できる．
 
+```
+SYNOPSIS
+     #include <sys/socket.h>
+
+     ssize_t
+     recv(int socket, void *buffer, size_t length, int flags);
+
+     ssize_t
+     recvfrom(int socket, void *restrict buffer, size_t length, int flags, struct sockaddr *restrict address,
+         socklen_t *restrict address_len);
+
+     ssize_t
+     recvmsg(int socket, struct msghdr *message, int flags);
+```
 
 ## send/write
-socket/connectionに書き込む．
+socket/connectionに書き込む．書き込むbyte数を指定できるが，一度に書き込めないときもあるので，全部書き込むためにはループする必要がある．
 ```
 SYNOPSIS
      #include <sys/socket.h>
