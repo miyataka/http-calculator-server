@@ -10,27 +10,35 @@
 
 int main() {
     int sock = create_tcp_server();
+    if (sock == -1) {
+        printf("create_tcp_server error: %s\n", strerror(errno));
+        return -1;
+    }
 
-    // listen
     if (listen(sock, 100) == -1) {
         perror("listen error");
+        return -1;
     }
 
     for (;;) {
-        // accept
         int client_fd = accept(sock, NULL, NULL);
 
-        // recv
         char buf[1024];
-        int num_received = recv(client_fd, buf, sizeof(buf), 0);
-        printf("%d byte received\n", num_received);
+        int num_received = -1;
+        int sum_received = 0;
+        while(num_received != 0) {
+            num_received = recv(client_fd,
+                                buf + sum_received,
+                                sizeof(buf) - sum_received,
+                                0);
+            sum_received += num_received;
+            printf("%d byte received\n", sum_received);
+        }
+        // handle if it received over 1kB
+
+        send(client_fd, buf, sum_received, 0);
         // TODO error handle
 
-        // send
-        send(client_fd, buf, num_received, 0);
-        // TODO error handle
-
-        // close
         close(client_fd);
         // TODO error handle
     }
