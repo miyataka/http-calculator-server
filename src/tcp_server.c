@@ -5,7 +5,7 @@
 #include <netinet/in.h>
 
 int create_tcp_server() {
-    int sock = socket(PF_INET, SOCK_STREAM, 0);
+    int sock = socket(PF_INET6, SOCK_STREAM, 0);
     if (sock == -1) {
         perror("socket error");
         return -1;
@@ -18,10 +18,17 @@ int create_tcp_server() {
         return -1;
     }
 
-    struct sockaddr_in addr = {
-        .sin_family = AF_INET,
-        .sin_port = htons(8080),
-        .sin_addr.s_addr = INADDR_ANY,
+    int option_off = 0;
+    if(setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &option_off, sizeof(option_off)) == -1) {
+        perror("setsockopt error");
+        close(sock);
+        return -1;
+    }
+
+    struct sockaddr_in6 addr = {
+        .sin6_family = AF_INET6,
+        .sin6_port = htons(8080),
+        .sin6_addr = in6addr_any,
     };
     if (bind(sock, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
         perror("bind error");
