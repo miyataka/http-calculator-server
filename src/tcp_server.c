@@ -50,3 +50,22 @@ ssize_t recv_until_eof(int socket, void *buffer, size_t buffer_size) {
 
     return sum_received;
 }
+
+
+ssize_t send_n(int socket, void *buffer, size_t buffer_size) {
+    ssize_t num_sent = 0;
+    while(num_sent != (ssize_t)buffer_size) {
+        ssize_t sent = 0;
+        sent = send(socket,
+                    buffer + num_sent,
+                    buffer_size - num_sent,
+                    0);
+        if (sent == -1) {
+            perror("send error");
+            return -1;
+        }
+        num_sent += sent;
+        printf("%d byte sent\n", (int)num_sent);
+    }
+    return num_sent;
+}

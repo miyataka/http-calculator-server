@@ -31,22 +31,13 @@ int main() {
         // recv loop
         char buf[1024];
         // TODO handle if it received over 1kB
-        size_t sum_received = recv_until_eof(client_fd, buf, sizeof(buf));
+        ssize_t sum_received = recv_until_eof(client_fd, buf, sizeof(buf));
 
         // send loop
-        ssize_t num_sent = 0;
-        while(num_sent != (ssize_t)sum_received) {
-            ssize_t sent = 0;
-            sent = send(client_fd,
-                        buf + num_sent,
-                        sum_received - num_sent,
-                        0);
-            if (sent == -1) {
-                perror("send error");
-                return -1;
-            }
-            num_sent += sent;
-            printf("%d byte sent\n", (int)num_sent);
+        ssize_t sum_sent = send_n(client_fd, buf, (size_t)sum_received);
+        if (sum_sent == -1) {
+            perror("send_n");
+            return -1;
         }
 
         if (close(client_fd) == -1) {
