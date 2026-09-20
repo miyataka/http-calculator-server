@@ -34,6 +34,10 @@ int main() {
     int client_fd = accept(sock, NULL, NULL);
 
     // recv
+    char buf[1024];
+    int num_received = recv(client_fd, buf, sizeof(buf), 0);
+    printf("%d byte received\n", num_received);
+    // TODO error handle
 
     // send
     const char *msg = "hello\n";
