@@ -6,24 +6,10 @@
 #include <arpa/inet.h>
 #include <string.h>
 
+#include "tcp_server.h"
+
 int main() {
-    int sock = socket(PF_INET, SOCK_STREAM, 0);
-    // TODO error handle
-
-    int option_on = 1;
-    if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR,
-                &option_on, sizeof(option_on)) == -1) {
-        printf("setsockopt error");
-    }
-    struct sockaddr_in addr = {
-        .sin_family = AF_INET,
-        .sin_port = htons(8080),
-        .sin_addr.s_addr = INADDR_ANY,
-    };
-
-    if (bind(sock, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
-        perror("bind error");
-    }
+    int sock = create_tcp_server();
 
     // listen
     if (listen(sock, 100) == -1) {
