@@ -42,7 +42,7 @@ int main() {
                 return -1;
             }
             sum_received += num_received;
-            printf("%d byte received\n", (int)sum_received);
+            printf("%d byte received. total %d bytes\n", (int)num_received, (int)sum_received);
         }
         // handle if it received over 1kB
 
