@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <errno.h>
@@ -23,21 +24,40 @@ int main() {
     for (;;) {
         int client_fd = accept(sock, NULL, NULL);
 
+
+        // recv loop
         char buf[1024];
-        int num_received = -1;
-        int sum_received = 0;
+        ssize_t num_received = -1;
+        ssize_t sum_received = 0;
         while(num_received != 0) {
             num_received = recv(client_fd,
                                 buf + sum_received,
                                 sizeof(buf) - sum_received,
                                 0);
+            if (num_received == -1) {
+                perror("recv error");
+                return -1;
+            }
             sum_received += num_received;
-            printf("%d byte received\n", sum_received);
+            printf("%d byte received\n", (int)sum_received);
         }
         // handle if it received over 1kB
 
-        send(client_fd, buf, sum_received, 0);
-        // TODO error handle
+        // send loop
+        ssize_t num_sent = 0;
+        while(num_sent != sum_received) {
+            ssize_t sent = 0;
+            sent = send(client_fd,
+                    buf + num_sent,
+                    sum_received - num_sent,
+                    0);
+            if (sent == -1) {
+                perror("send error");
+                return -1;
+            }
+            num_sent += sent;
+            printf("%d byte sent\n", (int)num_sent);
+        }
 
         close(client_fd);
         // TODO error handle
