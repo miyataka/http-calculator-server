@@ -23,7 +23,10 @@ int main() {
 
     for (;;) {
         int client_fd = accept(sock, NULL, NULL);
-
+        if (client_fd == -1) {
+            perror("accept error");
+            return -1;
+        }
 
         // recv loop
         char buf[1024];
