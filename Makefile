@@ -3,9 +3,6 @@ CFLAGS  ?= -std=c11 -Wall -Wextra -g -O0
 TARGET  := bin/server
 SRCS    := $(wildcard src/*.c)
 
-COMPOSE := docker compose
-RUN     := $(COMPOSE) run --rm --service-ports dev
-
 .PHONY: build run clean compdb image shell docker-build docker-run docker-compdb
 
 # ---- コンテナ内 (または Linux ホスト) で実行するターゲット ----
@@ -27,16 +24,36 @@ clean:
 
 # ---- ホスト (macOS) から Docker 経由で実行するターゲット ----
 image:
-	$(COMPOSE) build
+	docker build -t http-calclator-server .
 
-shell:
-	$(RUN)
+shell: image
+	docker run --rm \
+		-it \
+		-v $(PWD):${PWD} \
+		-w ${PWD} \
+		http-calclator-server \
+		bash
 
-docker-build:
-	$(RUN) make build
+docker-build: image
+	docker run --rm \
+		-it \
+		-v $(PWD):${PWD} \
+		-w ${PWD} \
+		http-calclator-server \
+		sh -c 'make build'
 
-docker-run:
-	$(RUN) make run
+docker-run: image
+	docker run --rm \
+		-it -p 8080:8080 \
+		-v $(PWD):${PWD} \
+		-w ${PWD} \
+		http-calclator-server \
+		sh -c 'make build && make run'
 
-docker-compdb:
-	$(RUN) make compdb
+docker-compdb: image
+	docker run --rm \
+		-it \
+		-v $(PWD):${PWD} \
+		-w ${PWD} \
+		http-calclator-server \
+		sh -c 'make compdb'
