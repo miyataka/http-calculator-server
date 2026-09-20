@@ -40,8 +40,7 @@ int main() {
     // TODO error handle
 
     // send
-    const char *msg = "hello\n";
-    send(client_fd, msg, strlen(msg), 0);
+    send(client_fd, buf, num_received, 0);
     // TODO error handle
 
     // close
