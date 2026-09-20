@@ -30,30 +30,17 @@ int main() {
 
         // recv loop
         char buf[1024];
-        ssize_t num_received = -1;
-        ssize_t sum_received = 0;
-        while(num_received != 0) {
-            num_received = recv(client_fd,
-                                buf + sum_received,
-                                sizeof(buf) - sum_received,
-                                0);
-            if (num_received == -1) {
-                perror("recv error");
-                return -1;
-            }
-            sum_received += num_received;
-            printf("%d byte received. total %d bytes\n", (int)num_received, (int)sum_received);
-        }
-        // handle if it received over 1kB
+        // TODO handle if it received over 1kB
+        size_t sum_received = recv_until_eof(client_fd, buf, sizeof(buf));
 
         // send loop
         ssize_t num_sent = 0;
-        while(num_sent != sum_received) {
+        while(num_sent != (ssize_t)sum_received) {
             ssize_t sent = 0;
             sent = send(client_fd,
-                    buf + num_sent,
-                    sum_received - num_sent,
-                    0);
+                        buf + num_sent,
+                        sum_received - num_sent,
+                        0);
             if (sent == -1) {
                 perror("send error");
                 return -1;

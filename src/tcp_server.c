@@ -30,3 +30,23 @@ int create_tcp_server() {
     }
     return sock;
 }
+
+ssize_t recv_until_eof(int socket, void *buffer, size_t buffer_size) {
+    ssize_t num_received = -1;
+    ssize_t sum_received = 0;
+
+    while(num_received != 0) {
+        num_received = recv(socket,
+                            buffer + sum_received,
+                            buffer_size - sum_received,
+                            0);
+        if (num_received == -1) {
+            perror("recv error");
+            return -1;
+        }
+        sum_received += num_received;
+        printf("%d byte received. total %d bytes\n", (int)num_received, (int)sum_received);
+    }
+
+    return sum_received;
+}
