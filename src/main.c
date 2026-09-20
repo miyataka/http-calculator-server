@@ -62,11 +62,15 @@ int main() {
             printf("%d byte sent\n", (int)num_sent);
         }
 
-        close(client_fd);
-        // TODO error handle
+        if (close(client_fd) == -1) {
+            perror("close error");
+            return -1;
+        }
     }
 
-    close(sock);
-    // TODO error handle
+    if (close(sock) == -1) {
+        perror("close error");
+        return -1;
+    }
     return 0;
 }
