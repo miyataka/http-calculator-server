@@ -22,6 +22,10 @@ compdb: clean
 clean:
 	rm -rf bin/* compile_commands.json
 
+test: clean build
+	./test.sh
+
+
 # ---- ホスト (macOS) から Docker 経由で実行するターゲット ----
 image:
 	docker build -t http-calclator-server .
