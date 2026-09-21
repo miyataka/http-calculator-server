@@ -6,11 +6,11 @@
 #include "tcp_server.h"
 
 
-char* FIXED_RESPONSE = "HTTP/1.1 200 OK\n"
-                       "Content-Length: 5\n"
-                       "Connection: close\n"
+char* FIXED_RESPONSE = "HTTP/1.1 200 OK\r\n"
+                       "Content-Length: 5\r\n"
+                       "Connection: close\r\n"
                        "\r\n"
-                       "hello\n";
+                       "hello\r\n";
 
 
 ssize_t response_fixed(int client_fd) {
