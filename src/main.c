@@ -35,6 +35,13 @@ int main() {
         // ssize_t sum_received = recv_until_eof(client_fd, buf, sizeof(buf));
         ssize_t sum_received = recv_http_header(client_fd, buf, sizeof(buf));
         printf("%d byte\n%s\n", (int)sum_received, buf);
+        struct http_header header = {0};
+        parse_http_header(buf, &header);
+
+        printf("http_method: %d\n", header.method);
+        printf("http_target: %p\n", header.target);
+        printf("http_target_length: %d\n", (int)header.target_length);
+        printf("http_version: %d\n", header.version);
 
         // send loop
         ssize_t sum_sent = response_fixed(client_fd);

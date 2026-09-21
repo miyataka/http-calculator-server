@@ -8,7 +8,7 @@ LLMと相談して以下のステップを刻むことにする
 - [x] 固定レスポンスを返す
 - [x] http request header終端を認識する
     - 文字列の初期化漏れでバグらせた．
-- [ ] request lineだけ（requestの先頭一行）だけparseする
+- [x] request lineだけ（requestの先頭一行）だけparseする
 - [ ] routingに対応する
 - [ ] error応答を入れる
 - [ ] http headerをparseする．
