@@ -10,7 +10,8 @@ LLMと相談して以下のステップを刻むことにする
     - 文字列の初期化漏れでバグらせた．
 - [x] request lineだけ（requestの先頭一行）だけparseする
 - [x] routingに対応する
-- [ ] error応答を入れる
+- [x] error応答を入れる
+    - not found
 - [ ] http headerをparseする．
     - とりあえずhostとcontent-lengthのみ
     - その他

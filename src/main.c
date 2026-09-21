@@ -56,10 +56,16 @@ int main() {
                 perror("calc_handler");
                 return -1;
             }
-        } else if (header.method == HTTP_METHOD_GET && memcmp(target, "/", 1) == 0) {
+        } else if (header.method == HTTP_METHOD_GET && strlen(target) == 1 && memcmp(target, "/", 1) == 0) {
             sum_sent = response_fixed(client_fd);
             if (sum_sent == -1) {
                 perror("response_fixed");
+                return -1;
+            }
+        } else {
+            sum_sent = not_found(client_fd);
+            if (sum_sent == -1) {
+                perror("not_found");
                 return -1;
             }
         }
