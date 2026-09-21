@@ -46,15 +46,6 @@ ssize_t response_fixed(int client_fd) {
     return sum_sent;
 }
 
-char* find_crlf(char* buf, size_t len) {
-    for (size_t i = 0; i + 1 < len; i++) {
-        if (buf[i] == '\r' && buf[i+1] == '\n') {
-            return &buf[i];
-        }
-    }
-    return NULL;
-}
-
 char* find_space(char* buf, size_t len) {
     for (size_t i = 0; i < len; i++) {
         if (buf[i] == ' ') {
@@ -116,8 +107,7 @@ enum http_version parse_http_version(char* buf, size_t len) {
 }
 
 void parse_http_header(char* buf, struct http_header* header) {
-    size_t header_len = strlen(buf);
-    char* end_of_line = find_crlf(buf, header_len);
+    char* end_of_line = strstr(buf, "\r\n");
     if (end_of_line == NULL) return;
 
     size_t len = end_of_line - buf;
