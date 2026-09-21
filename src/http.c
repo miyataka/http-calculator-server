@@ -11,9 +11,9 @@ char* FIXED_RESPONSE = "HTTP/1.1 200 OK\r\n"
                        "Content-Length: 5\r\n"
                        "Connection: close\r\n"
                        "\r\n"
-                       "hello\r\n\0";
+                       "hello\r\n";
 
-char* END_OF_HEADER = "\r\n\r\n\0";
+char* END_OF_HEADER = "\r\n\r\n";
 
 ssize_t recv_http_header(int socket, char* buffer, size_t buffer_size) {
     ssize_t sum_received = 0;
