@@ -41,13 +41,13 @@ int main() {
 
         printf("http_method: %d\n", header.method);
         printf("http_target: %p\n", header.target);
-        printf("http_target_length: %d\n", (int)header.target_length);
+        printf("http_target_len: %d\n", (int)header.target_len);
         printf("http_version: %d\n", header.version);
 
         // routing
-        char target[header.target_length+1];
-        memcpy(target, header.target, header.target_length);
-        target[header.target_length] = '\0';
+        char target[header.target_len+1];
+        memcpy(target, header.target, header.target_len);
+        target[header.target_len] = '\0';
 
         ssize_t sum_sent = 0;
         if (header.method == HTTP_METHOD_GET && memcmp(target, "/calc", 5) == 0) {

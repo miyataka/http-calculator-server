@@ -88,7 +88,7 @@ void parse_http_target(char* buf, size_t len, struct http_header* header) {
 
     if (target_len <= 0) return;
     header->target = buf + method_len + 1;
-    header->target_length = target_len;
+    header->target_len = target_len;
     return;
 }
 

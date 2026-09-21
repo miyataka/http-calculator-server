@@ -16,7 +16,7 @@ enum http_version {
 struct http_header {
     enum http_method method;
     char* target;
-    size_t target_length;
+    size_t target_len;
     enum http_version version;
     // TODO other headers
 };
