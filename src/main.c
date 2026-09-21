@@ -30,8 +30,7 @@ int main() {
         }
 
         // recv loop
-        char buf[1024];
-        buf[0] = '\0';
+        char buf[1024] = {0};
         // TODO handle if it received over 1kB
         // ssize_t sum_received = recv_until_eof(client_fd, buf, sizeof(buf));
         ssize_t sum_received = recv_http_header(client_fd, buf, sizeof(buf));
