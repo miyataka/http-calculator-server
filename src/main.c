@@ -9,6 +9,7 @@
 
 #include "tcp_server.h"
 #include "http.h"
+#include "http_handler.h"
 
 int main() {
     int sock = create_tcp_server();
@@ -43,11 +44,24 @@ int main() {
         printf("http_target_length: %d\n", (int)header.target_length);
         printf("http_version: %d\n", header.version);
 
-        // send loop
-        ssize_t sum_sent = response_fixed(client_fd);
-        if (sum_sent == -1) {
-            perror("send_n");
-            return -1;
+        // routing
+        char target[header.target_length+1];
+        memcpy(target, header.target, header.target_length);
+        target[header.target_length] = '\0';
+
+        ssize_t sum_sent = 0;
+        if (header.method == HTTP_METHOD_GET && memcmp(target, "/calc", 5) == 0) {
+            sum_sent = calc_handler(client_fd, header);
+            if (sum_sent == -1) {
+                perror("calc_handler");
+                return -1;
+            }
+        } else if (header.method == HTTP_METHOD_GET && memcmp(target, "/", 1) == 0) {
+            sum_sent = response_fixed(client_fd);
+            if (sum_sent == -1) {
+                perror("response_fixed");
+                return -1;
+            }
         }
 
         if (close(client_fd) == -1) {

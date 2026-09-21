@@ -9,7 +9,7 @@ LLMと相談して以下のステップを刻むことにする
 - [x] http request header終端を認識する
     - 文字列の初期化漏れでバグらせた．
 - [x] request lineだけ（requestの先頭一行）だけparseする
-- [ ] routingに対応する
+- [x] routingに対応する
 - [ ] error応答を入れる
 - [ ] http headerをparseする．
     - とりあえずhostとcontent-lengthのみ

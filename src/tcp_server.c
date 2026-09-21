@@ -38,7 +38,7 @@ int create_tcp_server() {
     return sock;
 }
 
-ssize_t recv_until_eof(int socket, void *buffer, size_t buffer_size) {
+ssize_t recv_until_eof(int socket, char *buffer, size_t buffer_size) {
     ssize_t num_received = -1;
     ssize_t sum_received = 0;
 
@@ -59,7 +59,7 @@ ssize_t recv_until_eof(int socket, void *buffer, size_t buffer_size) {
 }
 
 
-ssize_t send_n(int socket, void *buffer, size_t buffer_size) {
+ssize_t send_n(int socket, char *buffer, size_t buffer_size) {
     ssize_t num_sent = 0;
     while(num_sent != (ssize_t)buffer_size) {
         ssize_t sent = 0;
