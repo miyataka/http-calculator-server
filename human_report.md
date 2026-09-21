@@ -2,6 +2,23 @@
 
 記載順は日付の降順
 
+# 20260921
+今日はここまでで作ったtcp-echo-serverをhttp-serverにしていく作業を行う
+LLMと相談して以下のステップを刻むことにする
+- [x] 固定レスポンスを返す
+- [ ] http request header終端を認識する
+- [ ] request lineだけ（requestの先頭一行）だけparseする
+- [ ] routingに対応する
+- [ ] error応答を入れる
+- [ ] http headerをparseする．
+    - とりあえずhostとcontent-lengthのみ
+    - その他
+- [ ] response応答を関数化
+- [ ] POSTに対応する
+    - request bodyを読めるようにする
+- [ ] connection: closeを固定でいれる
+- [ ] keep-alive対応をいれる
+
 # 20260920
 
 LLMに聞いたところ，以下のsystem callを使うとTCPサーバーを作れるとのこと．

@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "tcp_server.h"
+#include "http.h"
 
 int main() {
     int sock = create_tcp_server();
@@ -34,7 +35,7 @@ int main() {
         ssize_t sum_received = recv_until_eof(client_fd, buf, sizeof(buf));
 
         // send loop
-        ssize_t sum_sent = send_n(client_fd, buf, (size_t)sum_received);
+        ssize_t sum_sent = response_fixed(client_fd);
         if (sum_sent == -1) {
             perror("send_n");
             return -1;
