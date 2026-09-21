@@ -6,7 +6,8 @@
 今日はここまでで作ったtcp-echo-serverをhttp-serverにしていく作業を行う
 LLMと相談して以下のステップを刻むことにする
 - [x] 固定レスポンスを返す
-- [ ] http request header終端を認識する
+- [x] http request header終端を認識する
+    - 文字列の初期化漏れでバグらせた．
 - [ ] request lineだけ（requestの先頭一行）だけparseする
 - [ ] routingに対応する
 - [ ] error応答を入れる
