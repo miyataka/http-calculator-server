@@ -27,7 +27,7 @@
 を切り出す
     - 空白で3分割して method / target / version を埋める
     - 失敗時は -1 を返す
-- [ ] `parse_http_request_head(buf, len, req)` に改名し、消費バイト数（`\r\n\r\n`
+- [x] `parse_http_request_head(buf, len, req)` に改名し、消費バイト数（`\r\n\r\n`
 含む）を返す
 - [x] `struct http_header { str_slice name; str_slice value; }` と `headers[32]` /
 `header_count` を http_request に追加

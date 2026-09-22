@@ -20,13 +20,21 @@ struct str_slice {
   size_t len;
 };
 
+struct http_header_field {
+  struct str_slice name;
+  struct str_slice value;
+};
+
 struct http_request {
     enum http_method method;
     struct str_slice target;
     enum http_version version;
 
-    struct str_slice header_lines[32]; // TODO more headers
+    struct str_slice header_lines[32]; // raw line
     size_t header_line_count;
+
+    struct http_header_field headers[32]; // parsed field
+    size_t header_count;
 };
 
 ssize_t recv_http_header(int client_fd, char* buffer, size_t buffer_size);

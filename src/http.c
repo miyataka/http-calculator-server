@@ -122,6 +122,73 @@ int parse_request_line(struct http_request* req) {
     return 0;
 }
 
+struct str_slice strip(struct str_slice slice) {
+    if (slice.len == 0) return slice;
+
+    const char* start = slice.ptr;
+    const char* end = slice.ptr + slice.len;
+    for (size_t i = 0; i < slice.len; i++) {
+        if (slice.ptr[i] != ' ') {
+            break;
+        }
+        start++;
+    }
+    while (end > start && end[-1] == ' ') end--;
+
+    struct str_slice striped = {
+        .ptr = start,
+        .len = end - start,
+    };
+    return striped;
+}
+
+char* findchr(char* buf, size_t len, char c) {
+    for (size_t i = 0; i < len; i++) {
+        if (buf[i] == c) return &buf[i];
+    }
+    return NULL;
+}
+
+char* findstr(char* buf, size_t len, char* str) {
+    size_t s_len = strlen(str);
+    if (s_len == 0) return NULL;
+
+    for (size_t i = 0; i + s_len <= len ; i++) {
+        if (buf[i] != str[0]) continue;
+
+        for (size_t j = 0; j < s_len; j++) {
+            if (buf[i+j] != str[j]) {
+                break;
+            }
+            if (j == s_len-1) return &buf[i];
+        }
+    }
+    return NULL;
+}
+
+int parse_request_header_field(char* buf, size_t len, struct http_header_field* dst) {
+    char* pos_end = findstr(buf, len, "\r\n");
+    if (pos_end == NULL) {
+        pos_end = buf + len;
+    }
+    char* colon = findchr(buf, pos_end-buf, ':');
+    if (colon == NULL) return -1;
+
+    struct str_slice name = {
+        .ptr = buf,
+        .len = colon - buf,
+    };
+    dst->name = name;
+
+    struct str_slice v = {
+        .ptr = colon + 1,
+        .len = pos_end - colon - 1,
+    };
+    dst->value = strip(v);
+
+    return 0;
+}
+
 int parse_http_request_head(char* buf, struct http_request* req) {
     char* end_of_header = strstr(buf, "\r\n\r\n");
     if (end_of_header == NULL) return -1;
@@ -146,5 +213,16 @@ int parse_http_request_head(char* buf, struct http_request* req) {
         return -1;
     }
 
-    return 0;
+    for (size_t i = 1; i < req->header_line_count; i++) {
+        if (parse_request_header_field(
+                    req->header_lines[i].ptr,
+                    req->header_lines[i].len,
+                    &req->headers[i-1] // headers側は0始まりにする
+                    ) == -1) {
+            return -1;
+        }
+    }
+    req->header_count = req->header_line_count - 1;
+
+    return end_of_header - buf + 4; // +4 is "\r\n\r\n" length
 }
