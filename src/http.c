@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <ctype.h>
 
 #include "tcp_server.h"
 #include "http.h"
@@ -225,4 +226,24 @@ int parse_http_request_head(char* buf, struct http_request* req) {
     req->header_count = req->header_line_count - 1;
 
     return end_of_header - buf + 4; // +4 is "\r\n\r\n" length
+}
+
+struct http_header_field* get_header(struct http_request* req, char* name) {
+    size_t len = strlen(name);
+
+    for (int i = 0; i < req->header_count; i++) {
+        if (req->headers[i].name.len != len) continue;
+
+        // tolowerしてから比較する
+        for (int j = 0; j < req->headers[i].name.len; j++) {
+            char h = (char)tolower((unsigned char)req->headers[i].name.ptr[j]);
+            char v = (char)tolower((unsigned char)name[j]);
+            if (h != v) break;
+
+            if (j + 1 == req->headers[i].name.len) {
+                return &req->headers[i];
+            }
+        }
+    }
+    return NULL;
 }

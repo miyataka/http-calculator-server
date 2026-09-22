@@ -40,3 +40,4 @@ struct http_request {
 ssize_t recv_http_header(int client_fd, char* buffer, size_t buffer_size);
 ssize_t response_fixed(int client_fd);
 int parse_http_request_head(char* buf, struct http_request* req);
+struct http_header_field* get_header(struct http_request* req, char* name);
