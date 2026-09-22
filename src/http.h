@@ -13,6 +13,11 @@ enum http_version {
     HTTP_VERSION_UNKNOWN, // TODO later
 };
 
+struct str_slice {
+  const char* ptr;
+  size_t len;
+};
+
 struct http_header {
     enum http_method method;
     char* target;
