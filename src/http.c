@@ -71,15 +71,15 @@ enum http_method parse_http_method(char* buf, size_t len) {
     }
 }
 
-void parse_http_target(char* buf, size_t len, struct http_header* header) {
+void parse_http_target(char* buf, size_t len, struct http_request* req) {
     char* space = find_space(buf, len);
     size_t method_len = space - buf;
     space = find_space(buf+method_len+1, len-method_len-1);
     size_t target_len = space - (buf+method_len+1);
 
     if (target_len <= 0) return;
-    header->target.ptr = buf + method_len + 1;
-    header->target.len = target_len;
+    req->target.ptr = buf + method_len + 1;
+    req->target.len = target_len;
     return;
 }
 
@@ -106,12 +106,12 @@ enum http_version parse_http_version(char* buf, size_t len) {
     }
 }
 
-void parse_http_header(char* buf, struct http_header* header) {
+void parse_http_header(char* buf, struct http_request* req) {
     char* end_of_header = strstr(buf, "\r\n\r\n");
     if (end_of_header == NULL) return;
     size_t header_len = end_of_header - buf;
 
-    header->method = parse_http_method(buf, header_len);
-    header->version = parse_http_version(buf, header_len);
-    parse_http_target(buf, header_len, header);
+    req->method = parse_http_method(buf, header_len);
+    req->version = parse_http_version(buf, header_len);
+    parse_http_target(buf, header_len, req);
 }

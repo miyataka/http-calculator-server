@@ -18,13 +18,20 @@ struct str_slice {
   size_t len;
 };
 
-struct http_header {
+struct http_request {
     enum http_method method;
     struct str_slice target;
     enum http_version version;
+
+    char* host;
+    size_t host_len;
+
+    char* content_length;
+    size_t content_length_len;
+
     // TODO other headers
 };
 
 ssize_t recv_http_header(int client_fd, char* buffer, size_t buffer_size);
 ssize_t response_fixed(int client_fd);
-void parse_http_header(char* buf, struct http_header* header);
+void parse_http_header(char* buf, struct http_request* req);

@@ -11,7 +11,7 @@ char* CALC_FIXED_RESPONSE = "HTTP/1.1 200 OK\r\n"
                             "\r\n"
                             "calclated\r\n";
 
-ssize_t calc_handler(int socket, struct http_header req) {
+ssize_t calc_handler(int socket, struct http_request req) {
     ssize_t sum_sent = send_n(socket, CALC_FIXED_RESPONSE, strlen(CALC_FIXED_RESPONSE));
     if (sum_sent == -1) {
         perror("send_n");

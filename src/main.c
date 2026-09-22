@@ -36,29 +36,29 @@ int main() {
         // ssize_t sum_received = recv_until_eof(client_fd, buf, sizeof(buf));
         ssize_t sum_received = recv_http_header(client_fd, buf, sizeof(buf));
         printf("%d byte\n%s\n", (int)sum_received, buf);
-        struct http_header header = {0};
+        struct http_request req = {0};
         struct str_slice t = {0};
-        header.target = t;
-        parse_http_header(buf, &header);
+        req.target = t;
+        parse_http_header(buf, &req);
 
-        printf("http_method: %d\n", header.method);
-        printf("http_target: %p\n", header.target.ptr);
-        printf("http_target_len: %d\n", (int)header.target.len);
-        printf("http_version: %d\n", header.version);
+        printf("http_method: %d\n", req.method);
+        printf("http_target: %p\n", req.target.ptr);
+        printf("http_target_len: %d\n", (int)req.target.len);
+        printf("http_version: %d\n", req.version);
 
         // routing
-        char target[header.target.len+1];
-        memcpy(target, header.target.ptr, header.target.len);
-        target[header.target.len] = '\0';
+        char target[req.target.len+1];
+        memcpy(target, req.target.ptr, req.target.len);
+        target[req.target.len] = '\0';
 
         ssize_t sum_sent = 0;
-        if (header.method == HTTP_METHOD_GET && memcmp(target, "/calc", 5) == 0) {
-            sum_sent = calc_handler(client_fd, header);
+        if (req.method == HTTP_METHOD_GET && memcmp(target, "/calc", 5) == 0) {
+            sum_sent = calc_handler(client_fd, req);
             if (sum_sent == -1) {
                 perror("calc_handler");
                 return -1;
             }
-        } else if (header.method == HTTP_METHOD_GET && strlen(target) == 1 && memcmp(target, "/", 1) == 0) {
+        } else if (req.method == HTTP_METHOD_GET && strlen(target) == 1 && memcmp(target, "/", 1) == 0) {
             sum_sent = response_fixed(client_fd);
             if (sum_sent == -1) {
                 perror("response_fixed");

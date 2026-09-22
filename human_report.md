@@ -20,7 +20,7 @@
 にする
     - `target` / `target_len` → `struct str_slice target`
     - main.c の参照箇所も追従
-- [ ] `parse_http_header` の行分割バグを直す
+- [x] `parse_http_header` の行分割バグを直す
     - `char** header_lines[32]` → 行ごとの str_slice 配列に
     - 行長は `end_of_line - next_line` で持つ
 - [ ] `parse_request_line(const char* line, size_t len, struct http_request* req)`
