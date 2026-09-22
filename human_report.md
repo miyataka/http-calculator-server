@@ -31,9 +31,9 @@
 含む）を返す
 - [x] `struct http_header { str_slice name; str_slice value; }` と `headers[32]` /
 `header_count` を http_request に追加
-- [ ] `parse_header_line(line, len, struct http_header* out)` を実装する
+- [x] `parse_request_header_field(line, len, struct http_header* out)` を実装する
     - `:` で分割、前後の空白（OWS）を落とす
-- [ ] `parse_http_request_head` の中で2行目以降を `parse_header_line` に通して headers
+- [x] `parse_http_request_head` の中で2行目以降を `parse_request_header_field` に通して headers
 に詰める
 - [ ] `get_header(const struct http_request* req, const char* name)` を実装する
     - 大文字小文字を無視して比較（`slice_eq_ci`）
