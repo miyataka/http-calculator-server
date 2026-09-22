@@ -78,8 +78,8 @@ void parse_http_target(char* buf, size_t len, struct http_header* header) {
     size_t target_len = space - (buf+method_len+1);
 
     if (target_len <= 0) return;
-    header->target = buf + method_len + 1;
-    header->target_len = target_len;
+    header->target.ptr = buf + method_len + 1;
+    header->target.len = target_len;
     return;
 }
 
@@ -107,11 +107,11 @@ enum http_version parse_http_version(char* buf, size_t len) {
 }
 
 void parse_http_header(char* buf, struct http_header* header) {
-    char* end_of_line = strstr(buf, "\r\n");
-    if (end_of_line == NULL) return;
+    char* end_of_header = strstr(buf, "\r\n\r\n");
+    if (end_of_header == NULL) return;
+    size_t header_len = end_of_header - buf;
 
-    size_t len = end_of_line - buf;
-    header->method = parse_http_method(buf, len);
-    header->version = parse_http_version(buf, len);
-    parse_http_target(buf, len, header);
+    header->method = parse_http_method(buf, header_len);
+    header->version = parse_http_version(buf, header_len);
+    parse_http_target(buf, header_len, header);
 }

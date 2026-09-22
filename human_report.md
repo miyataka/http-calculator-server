@@ -2,6 +2,53 @@
 
 記載順は日付の降順
 
+# 20260922
+
+大きなTODOs
+- [ ] http headerをparseする．
+    - とりあえずhostとcontent-lengthのみ
+    - その他
+- [ ] response応答を関数化
+- [ ] POSTに対応する
+    - request bodyを読めるようにする
+- [ ] connection: closeを固定でいれる
+- [ ] keep-alive対応をいれる
+
+`http headerをparseする`をやるための小さなTODOs
+- [x] `struct str_slice { const char* ptr; size_t len; }` を http.h に追加する
+- [x] `struct http_header` を `struct http_request` にリネームし、target を str_slice
+にする
+    - `target` / `target_len` → `struct str_slice target`
+    - main.c の参照箇所も追従
+- [ ] `parse_http_header` の行分割バグを直す
+    - `char** header_lines[32]` → 行ごとの str_slice 配列に
+    - 行長は `end_of_line - next_line` で持つ
+- [ ] `parse_request_line(const char* line, size_t len, struct http_request* req)`
+を切り出す
+    - 空白で3分割して method / target / version を埋める
+    - 失敗時は -1 を返す
+- [ ] `parse_http_request_head(buf, len, req)` に改名し、消費バイト数（`\r\n\r\n`
+含む）を返す
+- [ ] `struct http_header { str_slice name; str_slice value; }` と `headers[32]` /
+`header_count` を http_request に追加
+- [ ] `parse_header_line(line, len, struct http_header* out)` を実装する
+    - `:` で分割、前後の空白（OWS）を落とす
+- [ ] `parse_http_request_head` の中で2行目以降を `parse_header_line` に通して headers
+に詰める
+- [ ] `get_header(const struct http_request* req, const char* name)` を実装する
+    - 大文字小文字を無視して比較（`slice_eq_ci`）
+    - 見つからなければ NULL
+- [ ] `slice_to_size_t(str_slice, size_t* out)` を実装し、Content-Length を数値化する
+- [ ] パース失敗時に 400 Bad Request を返す `bad_request(fd)` を http_handler に追加し
+main.c で使う
+- [ ] `recv_http_body(fd, buf, size, already_have, content_length)` を実装する
+    - head と一緒に届いた body の余りを差し引き、不足分だけ recv
+- [ ] `receive_http_request(fd, buf, size, req)` を実装する
+    - recv_http_head → parse_http_request_head → (Content-Length があれば) recv_http_body
+    - `req->body` を埋める
+- [ ] main.c の recv / parse 呼び出しを `receive_http_request` 1回に置き換える
+- [ ] POST /calc で body を読んで応答する
+
 # 20260921
 今日はここまでで作ったtcp-echo-serverをhttp-serverにしていく作業を行う
 LLMと相談して以下のステップを刻むことにする

@@ -37,17 +37,19 @@ int main() {
         ssize_t sum_received = recv_http_header(client_fd, buf, sizeof(buf));
         printf("%d byte\n%s\n", (int)sum_received, buf);
         struct http_header header = {0};
+        struct str_slice t = {0};
+        header.target = t;
         parse_http_header(buf, &header);
 
         printf("http_method: %d\n", header.method);
-        printf("http_target: %p\n", header.target);
-        printf("http_target_len: %d\n", (int)header.target_len);
+        printf("http_target: %p\n", header.target.ptr);
+        printf("http_target_len: %d\n", (int)header.target.len);
         printf("http_version: %d\n", header.version);
 
         // routing
-        char target[header.target_len+1];
-        memcpy(target, header.target, header.target_len);
-        target[header.target_len] = '\0';
+        char target[header.target.len+1];
+        memcpy(target, header.target.ptr, header.target.len);
+        target[header.target.len] = '\0';
 
         ssize_t sum_sent = 0;
         if (header.method == HTTP_METHOD_GET && memcmp(target, "/calc", 5) == 0) {

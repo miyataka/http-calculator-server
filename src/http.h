@@ -20,8 +20,7 @@ struct str_slice {
 
 struct http_header {
     enum http_method method;
-    char* target;
-    size_t target_len;
+    struct str_slice target;
     enum http_version version;
     // TODO other headers
 };
