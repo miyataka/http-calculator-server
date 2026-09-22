@@ -52,11 +52,11 @@ main.c で使う
 `query string を parse する`の小さなTODOs
 - [x] `struct http_request` に `struct str_slice path;` と `struct str_slice query;` を追加する
     - `target` は生のまま残す（`/calc?a=1` 全体）
-- [ ] `parse_request_target(req)` を実装し，`target` を最初の `?` で `path` と `query` に分ける
+- [x] `parse_request_target(req)` を実装し，`target` を最初の `?` で `path` と `query` に分ける
     - `?` が無ければ `path = target`, `query` は空 slice
     - `parse_request_line` の末尾から呼ぶ
     - テスト: `/calc?a=1` → path `/calc` / query `a=1`，`/calc` → query 空，`/calc?` → query空，`/a?b?c` → query `b?c`
-- [ ] main.c の routing を `target` ではなく `path` で判定するように変える
+- [x] main.c の routing を `target` ではなく `path` で判定するように変える
     - 今の `memcmp(target, "/calc", 5)` は `/calculator` にも一致するので `path.len == 5` の完全一致にする
     - `char target[]` へのコピーをやめて slice のまま比較する
 - [ ] `struct query_param { struct str_slice name; struct str_slice value; }` と

@@ -4,6 +4,7 @@
 // 外部ライブラリなし．assert ベース．失敗すると abort する．
 
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -99,6 +100,58 @@ static void test_no_header_end_fails(void) {
 static void test_empty_input_fails(void) {
     char buf[256]; struct http_request req;
     assert(parse("", buf, sizeof buf, &req) == -1);
+}
+
+// ---- path / query ---------------------------------------------------------
+
+static void test_target_with_query(void) {
+    char buf[256]; struct http_request req;
+    parse("GET /calc?a=1 HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(slice_eq(req.target, "/calc?a=1"));  // target は生のまま
+    assert(slice_eq(req.path, "/calc"));
+    assert(slice_eq(req.query, "a=1"));
+}
+
+static void test_target_without_query(void) {
+    char buf[256]; struct http_request req;
+    parse("GET /calc HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(slice_eq(req.path, "/calc"));
+    assert(req.query.len == 0);
+}
+
+static void test_target_empty_query(void) {
+    char buf[256]; struct http_request req;
+    parse("GET /calc? HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(slice_eq(req.path, "/calc"));
+    assert(req.query.len == 0);
+}
+
+static void test_target_splits_at_first_question_mark(void) {
+    char buf[256]; struct http_request req;
+    parse("GET /a?b?c HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(slice_eq(req.path, "/a"));
+    assert(slice_eq(req.query, "b?c"));
+}
+
+static void test_target_root(void) {
+    char buf[256]; struct http_request req;
+    parse("GET / HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(slice_eq(req.path, "/"));
+    assert(req.query.len == 0);
+}
+
+static void test_target_leading_question_mark(void) {
+    // '?' が先頭でも path.len が underflow してはいけない
+    char buf[256]; struct http_request req;
+    parse("GET ?a=1 HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(req.path.len == 0);
+    assert(slice_eq(req.query, "a=1"));
 }
 
 // ---- header fields --------------------------------------------------------
@@ -230,6 +283,61 @@ static void test_get_header_on_empty_request(void) {
     assert(get_header(&req, "Host") == NULL);
 }
 
+// ---- slice_to_size_t ------------------------------------------------------
+
+static struct str_slice S(const char* s) {
+    struct str_slice sl = { .ptr = s, .len = strlen(s) };
+    return sl;
+}
+
+static void test_slice_to_size_t_basic(void) {
+    size_t v = 999;
+    assert(slice_to_size_t(S("42"), &v) == 0);
+    assert(v == 42);
+}
+
+static void test_slice_to_size_t_zero(void) {
+    size_t v = 999;
+    assert(slice_to_size_t(S("0"), &v) == 0);
+    assert(v == 0);
+}
+
+static void test_slice_to_size_t_respects_len(void) {
+    // slice の範囲外にある文字は読まない
+    size_t v = 999;
+    struct str_slice s = { .ptr = "42xyz", .len = 2 };
+    assert(slice_to_size_t(s, &v) == 0);
+    assert(v == 42);
+}
+
+static void test_slice_to_size_t_non_digit_fails(void) {
+    size_t v = 999;
+    assert(slice_to_size_t(S("4a"), &v) == -1);
+    assert(v == 999);  // 失敗時は out を触らない
+}
+
+static void test_slice_to_size_t_negative_fails(void) {
+    size_t v = 999;
+    assert(slice_to_size_t(S("-1"), &v) == -1);
+}
+
+static void test_slice_to_size_t_empty_fails(void) {
+    size_t v = 999;
+    assert(slice_to_size_t(S(""), &v) == -1);
+}
+
+static void test_slice_to_size_t_max(void) {
+    size_t v = 0;
+    assert(slice_to_size_t(S("18446744073709551615"), &v) == 0);  // SIZE_MAX
+    assert(v == SIZE_MAX);
+}
+
+static void test_slice_to_size_t_overflow_fails(void) {
+    size_t v = 999;
+    assert(slice_to_size_t(S("18446744073709551616"), &v) == -1);  // SIZE_MAX + 1
+    assert(slice_to_size_t(S("99999999999999999999999"), &v) == -1);
+}
+
 // ---- strip ----------------------------------------------------------------
 
 static void test_strip_both_sides(void) {
@@ -310,6 +418,14 @@ int main(void) {
     RUN(test_no_header_end_fails);
     RUN(test_empty_input_fails);
 
+    printf("path / query\n");
+    RUN(test_target_with_query);
+    RUN(test_target_without_query);
+    RUN(test_target_empty_query);
+    RUN(test_target_splits_at_first_question_mark);
+    RUN(test_target_root);
+    RUN(test_target_leading_question_mark);
+
     printf("header fields\n");
     RUN(test_headers_basic);
     RUN(test_headers_none);
@@ -328,6 +444,16 @@ int main(void) {
     RUN(test_get_header_prefix_does_not_match);
     RUN(test_get_header_returns_first_match);
     RUN(test_get_header_on_empty_request);
+
+    printf("slice_to_size_t\n");
+    RUN(test_slice_to_size_t_basic);
+    RUN(test_slice_to_size_t_zero);
+    RUN(test_slice_to_size_t_respects_len);
+    RUN(test_slice_to_size_t_non_digit_fails);
+    RUN(test_slice_to_size_t_negative_fails);
+    RUN(test_slice_to_size_t_empty_fails);
+    RUN(test_slice_to_size_t_max);
+    RUN(test_slice_to_size_t_overflow_fails);
 
     printf("strip\n");
     RUN(test_strip_both_sides);
