@@ -39,7 +39,7 @@ int main() {
         struct http_request req = {0};
         struct str_slice t = {0};
         req.target = t;
-        if (parse_http_header(buf, &req) == -1) {
+        if (parse_http_request_head(buf, &req) == -1) {
             bad_request(client_fd);
             close(client_fd);
             continue;

@@ -29,7 +29,7 @@
     - 失敗時は -1 を返す
 - [ ] `parse_http_request_head(buf, len, req)` に改名し、消費バイト数（`\r\n\r\n`
 含む）を返す
-- [ ] `struct http_header { str_slice name; str_slice value; }` と `headers[32]` /
+- [x] `struct http_header { str_slice name; str_slice value; }` と `headers[32]` /
 `header_count` を http_request に追加
 - [ ] `parse_header_line(line, len, struct http_header* out)` を実装する
     - `:` で分割、前後の空白（OWS）を落とす

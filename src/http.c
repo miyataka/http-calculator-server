@@ -122,7 +122,7 @@ int parse_request_line(struct http_request* req) {
     return 0;
 }
 
-int parse_http_header(char* buf, struct http_request* req) {
+int parse_http_request_head(char* buf, struct http_request* req) {
     char* end_of_header = strstr(buf, "\r\n\r\n");
     if (end_of_header == NULL) return -1;
 
