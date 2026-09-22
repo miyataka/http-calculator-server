@@ -1,16 +1,18 @@
 #include <sys/types.h>
 
 enum http_method {
+    HTTP_METHOD_UNKNOWN,
     HTTP_METHOD_GET,
     HTTP_METHOD_POST,
-    HTTP_METHOD_UNKNOWN, // TODO later
+    // TODO later
 };
 
 enum http_version {
+    HTTP_VERSION_UNKNOWN,
     HTTP_VERSION_0_9,
     HTTP_VERSION_1_0,
     HTTP_VERSION_1_1,
-    HTTP_VERSION_UNKNOWN, // TODO later
+    // TODO later
 };
 
 struct str_slice {

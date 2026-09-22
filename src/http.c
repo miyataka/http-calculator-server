@@ -55,13 +55,11 @@ char* find_space(char* buf, size_t len) {
     return NULL;
 }
 
-enum http_method parse_http_method(char* buf, size_t len) {
-    char* space = find_space(buf, len);
-    if (space == NULL) return HTTP_METHOD_UNKNOWN;
-    size_t method_len = space - buf;
-    if (method_len <= 0) return HTTP_METHOD_UNKNOWN;
 
-    switch (buf[0]) {
+enum http_method decide_http_method(struct str_slice method) {
+    if (method.len <= 0) return HTTP_METHOD_UNKNOWN;
+
+    switch (method.ptr[0]) {
         case 'G':
             return HTTP_METHOD_GET;
         case 'P':
@@ -71,31 +69,14 @@ enum http_method parse_http_method(char* buf, size_t len) {
     }
 }
 
-void parse_http_target(char* buf, size_t len, struct http_request* req) {
-    char* space = find_space(buf, len);
-    size_t method_len = space - buf;
-    space = find_space(buf+method_len+1, len-method_len-1);
-    size_t target_len = space - (buf+method_len+1);
+enum http_version decide_http_version(struct str_slice version) {
+    if (version.len <= 7) return HTTP_VERSION_UNKNOWN;
 
-    if (target_len <= 0) return;
-    req->target.ptr = buf + method_len + 1;
-    req->target.len = target_len;
-    return;
-}
-
-enum http_version parse_http_version(char* buf, size_t len) {
-    char* space = find_space(buf, len);
-    if (space == NULL) return HTTP_VERSION_UNKNOWN;
-    size_t method_len = space - buf;
-    if (method_len <= 0) return HTTP_VERSION_UNKNOWN;
-    space = find_space(buf+method_len+1, len-method_len-1);
-    char* version = space + 1;
-
-    switch (version[5]) {
+    switch (version.ptr[5]) {
         case '0':
             return HTTP_VERSION_0_9;
         case '1':
-            switch (version[7]) {
+            switch (version.ptr[7]) {
                 case '0':
                     return HTTP_VERSION_1_0;
                 case '1':
@@ -104,6 +85,41 @@ enum http_version parse_http_version(char* buf, size_t len) {
         default:
             return HTTP_VERSION_UNKNOWN;
     }
+}
+
+int parse_request_line(struct http_request* req) {
+    if (req->header_line_count == 0) return -1;
+    struct str_slice request_line = req->header_lines[0];
+
+    const char* start = request_line.ptr;
+    char* end = request_line.ptr + request_line.len;
+
+    char* pos_space = find_space(start, end - start);
+    if (pos_space == NULL) return -1;
+    struct str_slice method = {
+        .ptr = start,
+        .len = pos_space - start,
+    };
+
+    start = pos_space+1;
+    pos_space = find_space(pos_space+1, end - start);
+    if (pos_space == NULL) return -1;
+    struct str_slice target = {
+        .ptr = start,
+        .len = pos_space - start,
+    };
+
+    start = pos_space+1;
+    struct str_slice version = {
+        .ptr = start,
+        .len = end - start,
+    };
+
+    req->method = decide_http_method(method);
+    req->target = target;
+    req->version = decide_http_version(version);
+
+    return 0;
 }
 
 void parse_http_header(char* buf, struct http_request* req) {
@@ -126,7 +142,8 @@ void parse_http_header(char* buf, struct http_request* req) {
         i++;
     }
     req->header_line_count = i;
-    req->method = parse_http_method(buf, header_len);
-    req->version = parse_http_version(buf, header_len);
-    parse_http_target(buf, header_len, req);
+
+    if (parse_request_line(req) == -1) {
+        perror("parse_request_line");
+    }
 }
