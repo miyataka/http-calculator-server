@@ -193,20 +193,23 @@ int parse_request_header_field(char* buf, size_t len, struct http_header_field* 
 }
 
 int parse_request_target(struct http_request* req) {
-    if (req->target.len <= 1) return 0;
+    req->path = req->target;
+    if (req->target.len <= 1) {
+        return 0;
+    }
 
     char* q = findchr(req->target.ptr, req->target.len, '?');
     if (q == NULL) return 0;
 
     struct str_slice path = {
         .ptr = req->target.ptr,
-        .len = q - req->target.ptr - 1,
+        .len = q - req->target.ptr,
     };
     req->path = path;
 
     struct str_slice query = {
-        .ptr = q - 1,
-        .len = req->target.len - (q - req->target.ptr - 1),
+        .ptr = q + 1,
+        .len = req->target.len - (q + 1 - req->target.ptr),
     };
     req->query = query;
 
