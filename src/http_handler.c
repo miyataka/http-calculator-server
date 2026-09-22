@@ -9,7 +9,7 @@ char* CALC_FIXED_RESPONSE = "HTTP/1.1 200 OK\r\n"
                             "Content-Length: 9\r\n"
                             "Connection: close\r\n"
                             "\r\n"
-                            "calclated\r\n";
+                            "calclated";
 
 ssize_t calc_handler(int socket, struct http_request req) {
     ssize_t sum_sent = send_n(socket, CALC_FIXED_RESPONSE, strlen(CALC_FIXED_RESPONSE));
@@ -25,7 +25,7 @@ char* NOT_FOUND_RESPONSE = "HTTP/1.1 404 Not Found\r\n"
                             "Content-Length: 9\r\n"
                             "Connection: close\r\n"
                             "\r\n"
-                            "Not Found\r\n";
+                            "Not Found";
 
 ssize_t not_found(int socket) {
     ssize_t sum_sent = send_n(socket, NOT_FOUND_RESPONSE, strlen(NOT_FOUND_RESPONSE));
@@ -40,7 +40,7 @@ char* BAD_REQUEST_RESPONSE = "HTTP/1.1 400 Bad Request\r\n"
                             "Content-Length: 11\r\n"
                             "Connection: close\r\n"
                             "\r\n"
-                            "Bad Request\r\n";
+                            "Bad Request";
 
 
 ssize_t bad_request(int socket) {

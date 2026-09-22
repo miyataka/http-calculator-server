@@ -12,7 +12,7 @@ char* FIXED_RESPONSE = "HTTP/1.1 200 OK\r\n"
                        "Content-Length: 5\r\n"
                        "Connection: close\r\n"
                        "\r\n"
-                       "hello\r\n";
+                       "hello";
 
 char* END_OF_HEADER = "\r\n\r\n";
 
