@@ -249,6 +249,15 @@ struct http_header_field* get_header(struct http_request* req, char* name) {
     return NULL;
 }
 
-void slice_to_size_t(struct str_slice s, size_t* out) {
-    *out = (size_t)atoi(s.ptr);
+int slice_to_size_t(struct str_slice s, size_t* out) {
+    if (s.len == 0) return -1;
+    size_t v = 0;
+    for (size_t i = 0; i < s.len; i++) {
+        if (!isdigit((unsigned char)s.ptr[i])) return -1;
+        size_t d = s.ptr[i] - '0';
+        if (v > (SIZE_MAX - d) / 10) return -1; // overflow
+        v = v * 10 + d;
+    }
+    *out = v;
+    return 0;
 }
