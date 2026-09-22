@@ -16,11 +16,7 @@ char* findchr(char* buf, size_t len, char c);
 char* findstr(char* buf, size_t len, char* str);
 
 // ---- helpers --------------------------------------------------------------
-
-static int slice_eq(struct str_slice s, const char* expected) {
-    size_t n = strlen(expected);
-    return s.len == n && memcmp(s.ptr, expected, n) == 0;
-}
+// slice_eq は http.h の公開関数を使う
 
 // リテラルを書き込み可能なバッファにコピーして parse する
 static int parse(const char* raw, char* buf, size_t buf_size, struct http_request* req) {
@@ -338,6 +334,33 @@ static void test_slice_to_size_t_overflow_fails(void) {
     assert(slice_to_size_t(S("99999999999999999999999"), &v) == -1);
 }
 
+// ---- slice_eq -------------------------------------------------------------
+
+static void test_slice_eq_match(void) {
+    assert(slice_eq(S("/calc"), "/calc"));
+}
+
+static void test_slice_eq_prefix_does_not_match(void) {
+    assert(!slice_eq(S("/calculator"), "/calc"));  // 長い方
+    assert(!slice_eq(S("/cal"), "/calc"));         // 短い方
+}
+
+static void test_slice_eq_respects_len(void) {
+    // slice の範囲外の文字は比較に含めない
+    struct str_slice s = { .ptr = "/calc?a=1", .len = 5 };
+    assert(slice_eq(s, "/calc"));
+}
+
+static void test_slice_eq_empty(void) {
+    assert(slice_eq(S(""), ""));
+    assert(!slice_eq(S(""), "/"));
+    assert(!slice_eq(S("/"), ""));
+}
+
+static void test_slice_eq_case_sensitive(void) {
+    assert(!slice_eq(S("/Calc"), "/calc"));
+}
+
 // ---- strip ----------------------------------------------------------------
 
 static void test_strip_both_sides(void) {
@@ -454,6 +477,13 @@ int main(void) {
     RUN(test_slice_to_size_t_empty_fails);
     RUN(test_slice_to_size_t_max);
     RUN(test_slice_to_size_t_overflow_fails);
+
+    printf("slice_eq\n");
+    RUN(test_slice_eq_match);
+    RUN(test_slice_eq_prefix_does_not_match);
+    RUN(test_slice_eq_respects_len);
+    RUN(test_slice_eq_empty);
+    RUN(test_slice_eq_case_sensitive);
 
     printf("strip\n");
     RUN(test_strip_both_sides);
