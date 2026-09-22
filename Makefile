@@ -3,7 +3,12 @@ CFLAGS  ?= -std=c11 -Wall -Wextra -g -O0
 TARGET  := bin/server
 SRCS    := $(wildcard src/*.c)
 
-.PHONY: build run clean compdb image shell docker-build docker-run docker-compdb
+# 単体テスト用: main() を含む main.c を除いたソース + tests/*.c
+LIB_SRCS  := $(filter-out src/main.c,$(SRCS))
+TEST_SRCS := $(wildcard tests/*.c)
+TEST_BIN  := bin/unit-test
+
+.PHONY: build run clean compdb image shell docker-build docker-run docker-compdb unit-test
 
 # ---- コンテナ内 (または Linux ホスト) で実行するターゲット ----
 build: $(TARGET)
@@ -22,7 +27,12 @@ compdb: clean
 clean:
 	rm -rf bin/* compile_commands.json
 
-test: clean build
+unit-test: $(LIB_SRCS) $(TEST_SRCS)
+	@mkdir -p bin
+	$(CC) $(CFLAGS) -fsanitize=address -o $(TEST_BIN) $^
+	./$(TEST_BIN)
+
+test: unit-test clean build
 	./test.sh
 
 
