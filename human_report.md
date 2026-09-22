@@ -35,10 +35,10 @@
     - `:` で分割、前後の空白（OWS）を落とす
 - [x] `parse_http_request_head` の中で2行目以降を `parse_request_header_field` に通して headers
 に詰める
-- [ ] `get_header(const struct http_request* req, const char* name)` を実装する
+- [x] `get_header(const struct http_request* req, const char* name)` を実装する
     - 大文字小文字を無視して比較（`slice_eq_ci`）
     - 見つからなければ NULL
-- [ ] `slice_to_size_t(str_slice, size_t* out)` を実装し、Content-Length を数値化する
+- [x] `slice_to_size_t(str_slice, size_t* out)` を実装し、Content-Length を数値化する
 - [x] パース失敗時に 400 Bad Request を返す `bad_request(fd)` を http_handler に追加し
 main.c で使う
 - [ ] `recv_http_body(fd, buf, size, already_have, content_length)` を実装する

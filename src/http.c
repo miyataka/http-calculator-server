@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <ctype.h>
+#include <stdlib.h>
 
 #include "tcp_server.h"
 #include "http.h"
@@ -246,4 +247,8 @@ struct http_header_field* get_header(struct http_request* req, char* name) {
         }
     }
     return NULL;
+}
+
+void slice_to_size_t(struct str_slice s, size_t* out) {
+    *out = (size_t)atoi(s.ptr);
 }
