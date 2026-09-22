@@ -51,17 +51,13 @@ int main() {
         printf("http_version: %d\n", req.version);
 
         // routing
-        char path[req.path.len+1];
-        memcpy(path, req.path.ptr, req.path.len);
-        path[req.path.len] = '\0';
-
         ssize_t sum_sent = 0;
-        if (req.method == HTTP_METHOD_GET && memcmp(path, "/calc", 5) == 0) {
+        if (req.method == HTTP_METHOD_GET && slice_eq(req.path, "/calc")) {
             sum_sent = calc_handler(client_fd, req);
             if (sum_sent == -1) {
                 perror("calc_handler");
             }
-        } else if (req.method == HTTP_METHOD_GET && strlen(path) == 1 && memcmp(path, "/", 1) == 0) {
+        } else if (req.method == HTTP_METHOD_GET && slice_eq(req.path, "/")) {
             sum_sent = response_fixed(client_fd);
             if (sum_sent == -1) {
                 perror("response_fixed");

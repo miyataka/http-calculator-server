@@ -45,3 +45,4 @@ ssize_t response_fixed(int client_fd);
 int parse_http_request_head(char* buf, struct http_request* req);
 struct http_header_field* get_header(struct http_request* req, char* name);
 int slice_to_size_t(struct str_slice s, size_t* out);
+int slice_eq(struct str_slice s, const char* str);

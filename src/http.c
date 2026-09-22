@@ -290,3 +290,8 @@ int slice_to_size_t(struct str_slice s, size_t* out) {
     *out = v;
     return 0;
 }
+
+int slice_eq(struct str_slice s, const char* str) {
+    size_t n = strlen(str);
+    return s.len == n && memcmp(s.ptr, str, n) == 0;
+}
