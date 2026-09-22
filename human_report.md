@@ -49,6 +49,40 @@ main.c で使う
 - [ ] main.c の recv / parse 呼び出しを `receive_http_request` 1回に置き換える
 - [ ] POST /calc で body を読んで応答する
 
+`query string を parse する`の小さなTODOs
+- [ ] `struct http_request` に `struct str_slice path;` と `struct str_slice query;` を追加する
+    - `target` は生のまま残す（`/calc?a=1` 全体）
+- [ ] `parse_request_target(req)` を実装し，`target` を最初の `?` で `path` と `query` に分ける
+    - `?` が無ければ `path = target`, `query` は空 slice
+    - `parse_request_line` の末尾から呼ぶ
+    - テスト: `/calc?a=1` → path `/calc` / query `a=1`，`/calc` → query 空，`/calc?` → query空，`/a?b?c` → query `b?c`
+- [ ] main.c の routing を `target` ではなく `path` で判定するように変える
+    - 今の `memcmp(target, "/calc", 5)` は `/calculator` にも一致するので `path.len == 5` の完全一致にする
+    - `char target[]` へのコピーをやめて slice のまま比較する
+- [ ] `struct query_param { struct str_slice name; struct str_slice value; }` と
+      `params[16]` / `param_count` を http_request に追加する
+- [ ] `parse_query_param(str_slice pair, struct query_param* out)` を実装する
+    - `a=1` を最初の `=` で name / value に分ける
+    - `=` が無ければ name のみで value は空 slice（`?flag` のような形）
+    - テスト: `a=1`，`a=`，`a`，`a=b=c` → value `b=c`
+- [ ] `parse_query(req)` を実装し，`query` を `&` で区切って `parse_query_param` に通す
+    - 空要素（`a=1&&b=2`）は読み飛ばす
+    - `params[16]` を越えたら -1
+    - テスト: `a=1&b=2`，空 query → count 0，`a=1&&b=2`，先頭・末尾の `&`
+- [ ] `get_query_param(req, name)` を実装する
+    - `get_header` と同じ形．ただしクエリ名は大文字小字を区別する（`slice_eq` でよい）
+    - 見つからなければ NULL
+- [ ] `slice_to_long(str_slice, long* out)` を実装する
+    - `slice_to_size_t` の符号付き版．先頭の `-` を許す
+    - テスト: `42`，`-42`，`-`，`4a`，空，overflow
+- [ ] `calc_handler` で `a` / `b` / `op` を取り出して計算し，結果を body に入れて返す
+    - op は `add` / `sub` / `mul` / `div` の4つから
+    - param 不足・数値化失敗・未知の op・ゼロ除算は 400
+    - body は `snprintf` で組み立て，Content-Length も実長から計算する
+    - test.sh に `curl 'localhost:8080/calc?a=1&b=2&op=add'` → `3` のケースを足す
+- [ ] （後回し）`%20` などの percent-decoding
+    - 今は数値と英字しか使わないので，POST の form 対応と一緒にやる
+
 # 20260921
 今日はここまでで作ったtcp-echo-serverをhttp-serverにしていく作業を行う
 LLMと相談して以下のステップを刻むことにする
