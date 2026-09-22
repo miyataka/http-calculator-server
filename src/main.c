@@ -41,6 +41,7 @@ int main() {
         req.target = t;
         if (parse_http_header(buf, &req) == -1) {
             bad_request(client_fd);
+            close(client_fd);
             continue;
         }
 
