@@ -8,6 +8,7 @@
 - [x] http headerをparseする．
     - とりあえずhostとcontent-lengthのみ
     - その他
+- [ ] query paramsに対応する
 - [ ] response応答を関数化
 - [ ] POSTに対応する
     - request bodyを読めるようにする
