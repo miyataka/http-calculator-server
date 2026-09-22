@@ -111,6 +111,21 @@ void parse_http_header(char* buf, struct http_request* req) {
     if (end_of_header == NULL) return;
     size_t header_len = end_of_header - buf;
 
+    int i = 0;
+    char* next_line = buf; // requestの先頭から
+    while (i < 32 && next_line < end_of_header) {
+        char* line_tail = strstr(next_line, "\r\n");
+        if (line_tail == NULL) break;
+
+        struct str_slice line;
+        line.ptr = next_line;
+        line.len = line_tail - next_line;
+
+        req->header_lines[i] = line;
+        next_line = line_tail + 2;
+        i++;
+    }
+    req->header_line_count = i;
     req->method = parse_http_method(buf, header_len);
     req->version = parse_http_version(buf, header_len);
     parse_http_target(buf, header_len, req);

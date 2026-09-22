@@ -23,13 +23,8 @@ struct http_request {
     struct str_slice target;
     enum http_version version;
 
-    char* host;
-    size_t host_len;
-
-    char* content_length;
-    size_t content_length_len;
-
-    // TODO other headers
+    struct str_slice header_lines[32]; // TODO more headers
+    size_t header_line_count;
 };
 
 ssize_t recv_http_header(int client_fd, char* buffer, size_t buffer_size);
