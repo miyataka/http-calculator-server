@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <errno.h>
 #include <sys/types.h>
@@ -191,6 +192,27 @@ int parse_request_header_field(char* buf, size_t len, struct http_header_field* 
     return 0;
 }
 
+int parse_request_target(struct http_request* req) {
+    if (req->target.len <= 1) return 0;
+
+    char* q = findchr(req->target.ptr, req->target.len, '?');
+    if (q == NULL) return 0;
+
+    struct str_slice path = {
+        .ptr = req->target.ptr,
+        .len = q - req->target.ptr - 1,
+    };
+    req->path = path;
+
+    struct str_slice query = {
+        .ptr = q - 1,
+        .len = req->target.len - (q - req->target.ptr - 1),
+    };
+    req->query = query;
+
+    return 0;
+}
+
 int parse_http_request_head(char* buf, struct http_request* req) {
     char* end_of_header = strstr(buf, "\r\n\r\n");
     if (end_of_header == NULL) return -1;
@@ -225,6 +247,10 @@ int parse_http_request_head(char* buf, struct http_request* req) {
         }
     }
     req->header_count = req->header_line_count - 1;
+
+    if (parse_request_target(req) == -1) {
+        return -1;
+    }
 
     return end_of_header - buf + 4; // +4 is "\r\n\r\n" length
 }

@@ -30,6 +30,9 @@ struct http_request {
     struct str_slice target;
     enum http_version version;
 
+    struct str_slice path;
+    struct str_slice query;
+
     struct str_slice header_lines[32]; // raw line
     size_t header_line_count;
 

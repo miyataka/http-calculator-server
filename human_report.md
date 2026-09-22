@@ -5,7 +5,7 @@
 # 20260922
 
 大きなTODOs
-- [ ] http headerをparseする．
+- [x] http headerをparseする．
     - とりあえずhostとcontent-lengthのみ
     - その他
 - [ ] response応答を関数化
@@ -50,7 +50,7 @@ main.c で使う
 - [ ] POST /calc で body を読んで応答する
 
 `query string を parse する`の小さなTODOs
-- [ ] `struct http_request` に `struct str_slice path;` と `struct str_slice query;` を追加する
+- [x] `struct http_request` に `struct str_slice path;` と `struct str_slice query;` を追加する
     - `target` は生のまま残す（`/calc?a=1` 全体）
 - [ ] `parse_request_target(req)` を実装し，`target` を最初の `?` で `path` と `query` に分ける
     - `?` が無ければ `path = target`, `query` は空 slice
