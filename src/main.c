@@ -39,7 +39,9 @@ int main() {
         struct http_request req = {0};
         struct str_slice t = {0};
         req.target = t;
-        parse_http_header(buf, &req);
+        if (parse_http_header(buf, &req) == -1) {
+            // TODO bad-request
+        }
 
         printf("http_method: %d\n", req.method);
         printf("http_target: %p\n", req.target.ptr);

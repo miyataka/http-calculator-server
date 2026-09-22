@@ -122,10 +122,9 @@ int parse_request_line(struct http_request* req) {
     return 0;
 }
 
-void parse_http_header(char* buf, struct http_request* req) {
+int parse_http_header(char* buf, struct http_request* req) {
     char* end_of_header = strstr(buf, "\r\n\r\n");
-    if (end_of_header == NULL) return;
-    size_t header_len = end_of_header - buf;
+    if (end_of_header == NULL) return -1;
 
     int i = 0;
     char* next_line = buf; // requestの先頭から
@@ -144,6 +143,8 @@ void parse_http_header(char* buf, struct http_request* req) {
     req->header_line_count = i;
 
     if (parse_request_line(req) == -1) {
-        perror("parse_request_line");
+        return -1;
     }
+
+    return 0;
 }

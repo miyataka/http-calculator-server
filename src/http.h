@@ -31,4 +31,4 @@ struct http_request {
 
 ssize_t recv_http_header(int client_fd, char* buffer, size_t buffer_size);
 ssize_t response_fixed(int client_fd);
-void parse_http_header(char* buf, struct http_request* req);
+int parse_http_header(char* buf, struct http_request* req);
