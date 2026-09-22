@@ -23,7 +23,7 @@
 - [x] `parse_http_header` の行分割バグを直す
     - `char** header_lines[32]` → 行ごとの str_slice 配列に
     - 行長は `end_of_line - next_line` で持つ
-- [ ] `parse_request_line(const char* line, size_t len, struct http_request* req)`
+- [x] `parse_request_line(const char* line, size_t len, struct http_request* req)`
 を切り出す
     - 空白で3分割して method / target / version を埋める
     - 失敗時は -1 を返す
@@ -39,7 +39,7 @@
     - 大文字小文字を無視して比較（`slice_eq_ci`）
     - 見つからなければ NULL
 - [ ] `slice_to_size_t(str_slice, size_t* out)` を実装し、Content-Length を数値化する
-- [ ] パース失敗時に 400 Bad Request を返す `bad_request(fd)` を http_handler に追加し
+- [x] パース失敗時に 400 Bad Request を返す `bad_request(fd)` を http_handler に追加し
 main.c で使う
 - [ ] `recv_http_body(fd, buf, size, already_have, content_length)` を実装する
     - head と一緒に届いた body の余りを差し引き、不足分だけ recv

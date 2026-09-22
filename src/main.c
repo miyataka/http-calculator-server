@@ -40,7 +40,8 @@ int main() {
         struct str_slice t = {0};
         req.target = t;
         if (parse_http_header(buf, &req) == -1) {
-            // TODO bad-request
+            bad_request(client_fd);
+            return -1;
         }
 
         printf("http_method: %d\n", req.method);
