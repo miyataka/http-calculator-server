@@ -41,7 +41,6 @@ int main() {
         req.target = t;
         if (parse_http_header(buf, &req) == -1) {
             bad_request(client_fd);
-            return -1;
         }
 
         printf("http_method: %d\n", req.method);
@@ -59,19 +58,16 @@ int main() {
             sum_sent = calc_handler(client_fd, req);
             if (sum_sent == -1) {
                 perror("calc_handler");
-                return -1;
             }
         } else if (req.method == HTTP_METHOD_GET && strlen(target) == 1 && memcmp(target, "/", 1) == 0) {
             sum_sent = response_fixed(client_fd);
             if (sum_sent == -1) {
                 perror("response_fixed");
-                return -1;
             }
         } else {
             sum_sent = not_found(client_fd);
             if (sum_sent == -1) {
                 perror("not_found");
-                return -1;
             }
         }
 
