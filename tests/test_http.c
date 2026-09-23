@@ -150,6 +150,105 @@ static void test_target_leading_question_mark(void) {
     assert(slice_eq(req.query, "a=1"));
 }
 
+// ---- query params ---------------------------------------------------------
+
+static void test_query_two_params(void) {
+    char buf[256]; struct http_request req;
+    int rc = parse("GET /calc?a=1&b=2 HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(rc > 0);
+    assert(req.param_count == 2);
+    assert(slice_eq(req.params[0].name, "a"));
+    assert(slice_eq(req.params[0].value, "1"));
+    assert(slice_eq(req.params[1].name, "b"));
+    assert(slice_eq(req.params[1].value, "2"));
+}
+
+static void test_query_single_param(void) {
+    char buf[256]; struct http_request req;
+    parse("GET /calc?a=1 HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(req.param_count == 1);
+    assert(slice_eq(req.params[0].name, "a"));
+    assert(slice_eq(req.params[0].value, "1"));
+}
+
+static void test_query_none(void) {
+    char buf[256]; struct http_request req;
+    parse("GET /calc HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(req.param_count == 0);
+}
+
+static void test_query_empty(void) {
+    char buf[256]; struct http_request req;
+    parse("GET /calc? HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(req.param_count == 0);
+}
+
+static void test_query_skips_empty_segment(void) {
+    char buf[256]; struct http_request req;
+    int rc = parse("GET /calc?a=1&&b=2 HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(rc > 0);
+    assert(req.param_count == 2);
+    assert(slice_eq(req.params[0].name, "a"));
+    assert(slice_eq(req.params[1].name, "b"));
+}
+
+static void test_query_skips_leading_and_trailing_amp(void) {
+    char buf[256]; struct http_request req;
+    int rc = parse("GET /calc?&a=1& HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(rc > 0);
+    assert(req.param_count == 1);
+    assert(slice_eq(req.params[0].name, "a"));
+    assert(slice_eq(req.params[0].value, "1"));
+}
+
+static void test_query_empty_value(void) {
+    char buf[256]; struct http_request req;
+    parse("GET /calc?a= HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(req.param_count == 1);
+    assert(slice_eq(req.params[0].name, "a"));
+    assert(req.params[0].value.len == 0);
+}
+
+static void test_query_missing_equals_fails(void) {
+    char buf[256]; struct http_request req;
+    int rc = parse("GET /calc?a HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(rc == -1);
+}
+
+static void test_query_splits_at_first_equals(void) {
+    char buf[256]; struct http_request req;
+    parse("GET /calc?a=b=c HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(req.param_count == 1);
+    assert(slice_eq(req.params[0].name, "a"));
+    assert(slice_eq(req.params[0].value, "b=c"));
+}
+
+static void test_query_caps_at_16_params(void) {
+    // 17 個渡しても params[16] に書き込まず 16 個で止まる
+    char buf[512]; struct http_request req;
+    char raw[512] = "GET /calc?";
+    for (int k = 0; k < 17; k++) {
+        char pair[16];
+        snprintf(pair, sizeof pair, "%sk%d=v", k ? "&" : "", k);
+        strcat(raw, pair);
+    }
+    strcat(raw, " HTTP/1.1\r\n\r\n");
+
+    int rc = parse(raw, buf, sizeof buf, &req);
+    assert(rc > 0);
+    assert(req.param_count == 16);
+    assert(slice_eq(req.params[15].name, "k15"));
+}
+
 // ---- header fields --------------------------------------------------------
 
 static void test_headers_basic(void) {
@@ -448,6 +547,18 @@ int main(void) {
     RUN(test_target_splits_at_first_question_mark);
     RUN(test_target_root);
     RUN(test_target_leading_question_mark);
+
+    printf("query params\n");
+    RUN(test_query_two_params);
+    RUN(test_query_single_param);
+    RUN(test_query_none);
+    RUN(test_query_empty);
+    RUN(test_query_skips_empty_segment);
+    RUN(test_query_skips_leading_and_trailing_amp);
+    RUN(test_query_empty_value);
+    RUN(test_query_missing_equals_fails);
+    RUN(test_query_splits_at_first_equals);
+    RUN(test_query_caps_at_16_params);
 
     printf("header fields\n");
     RUN(test_headers_basic);
