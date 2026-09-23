@@ -255,16 +255,60 @@ int slice_eq(struct str_slice s, const char* str) {
     return s.len == n && memcmp(s.ptr, str, n) == 0;
 }
 
-int parse_query_param(char* buf, size_t len, struct http_query_param* dst) {
-    char* c_eq = findchr(buf, len, '=');
-    if (c_eq == NULL) {
-        dst->name = (struct str_slice){ .ptr = buf, .len = len };
-        dst->value = (struct str_slice){ .ptr = buf+len, .len = 0 };
-        return 0;
-    }
+int hex_value(char c) {
+    if ('0' <= c && c <= '9') return c - '0';
+    if ('a' <= c && c <= 'f') return c - 'a' + 10;
+    if ('A' <= c && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
 
-    dst->name = (struct str_slice){ .ptr = buf, .len = c_eq - buf };
-    dst->value = (struct str_slice){ .ptr = c_eq + 1, .len = buf+len - c_eq - 1 };
+int percent_decode(const char* src, size_t len, char* dst, size_t cap, size_t* out_len) {
+    size_t r = 0, w = 0;
+    while (r < len) {
+        if (w >= cap) return -1;
+        if (src[r] == '%') {
+            if (r+2 >= len) return -1;
+            int hi = hex_value(src[r+1]);
+            int lo = hex_value(src[r+2]);
+            if (hi == -1 || lo == -1) return -1;
+            dst[w] = (char)(hi * 16 + lo);
+            w++;
+            r += 3;
+        } else if (src[r] == '+') {
+            dst[w] = ' ';
+            w++;
+            r++;
+        } else {
+            dst[w] = src[r];
+            w++;
+            r++;
+        }
+    }
+    *out_len = w;
+    return 0;
+}
+
+int decode_into(struct http_request* req, const char* src, size_t len, struct str_slice* out) {
+    char*  dst = req->decoded + req->decoded_len;
+    size_t cap = sizeof(req->decoded) - req->decoded_len; // left capacity
+    size_t n;
+    if (percent_decode(src, len, dst, cap, &n) == -1) return -1;
+
+    *out = (struct str_slice){ .ptr = dst, .len = n };
+    req->decoded_len += n;
+    return 0;
+}
+
+int parse_query_param(char* buf, size_t len, struct http_query_param* dst, struct http_request* req) {
+    char* c_eq = findchr(buf, len, '=');
+
+    const char* name_src = buf;
+    size_t      name_len = c_eq ? (size_t)(c_eq - buf) : len;
+    const char* val_src  = c_eq ? c_eq + 1 : buf + len;
+    size_t      val_len  = c_eq ? (size_t)(buf + len - c_eq - 1) : 0;
+
+    if (decode_into(req, name_src, name_len, &dst->name)  == -1) return -1;
+    if (decode_into(req, val_src,  val_len,  &dst->value) == -1) return -1;
     return 0;
 }
 
@@ -280,7 +324,7 @@ int parse_query(struct http_request* req) {
             next_param = pos_amp + 1;
             continue;
         }
-        if (parse_query_param(next_param, pos_amp - next_param, &req->params[i]) == -1) {
+        if (parse_query_param(next_param, pos_amp - next_param, &req->params[i], req) == -1) {
             return -1;
         }
 
@@ -365,37 +409,4 @@ struct http_query_param* get_query_param(struct http_request* req, char* name) {
         }
     }
     return NULL;
-}
-
-int hex_value(char c) {
-    if ('0' <= c && c <= '9') return c - '0';
-    if ('a' <= c && c <= 'f') return c - 'a' + 10;
-    if ('A' <= c && c <= 'F') return c - 'A' + 10;
-    return -1;
-}
-
-int percent_decode(const char* src, size_t len, char* dst, size_t cap, size_t* out_len) {
-    size_t r = 0, w = 0;
-    while (r < len) {
-        if (w >= cap) return -1;
-        if (src[r] == '%') {
-            if (r+2 >= len) return -1;
-            int hi = hex_value(src[r+1]);
-            int lo = hex_value(src[r+2]);
-            if (hi == -1 || lo == -1) return -1;
-            dst[w] = (char)(hi * 16 + lo);
-            w++;
-            r += 3;
-        } else if (src[r] == '+') {
-            dst[w] = ' ';
-            w++;
-            r++;
-        } else {
-            dst[w] = src[r];
-            w++;
-            r++;
-        }
-    }
-    *out_len = w;
-    return 0;
 }

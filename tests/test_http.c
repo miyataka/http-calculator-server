@@ -269,6 +269,97 @@ static void test_query_caps_at_16_params(void) {
     assert(slice_eq(req.params[15].name, "k15"));
 }
 
+// ---- query params: percent-decoding ---------------------------------------
+
+static void test_query_decodes_value(void) {
+    char buf[256]; struct http_request req;
+    int rc = parse("GET /calc?a=%2B1&b=2 HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(rc > 0);
+    assert(req.param_count == 2);
+    assert(slice_eq(req.params[0].name, "a"));
+    assert(slice_eq(req.params[0].value, "+1"));
+    assert(slice_eq(req.params[1].name, "b"));
+    assert(slice_eq(req.params[1].value, "2"));
+}
+
+static void test_query_decodes_into_decoded_buffer(void) {
+    // slice は buf ではなく req.decoded の中を指し，前から順に詰まる
+    char buf[256]; struct http_request req;
+    parse("GET /calc?a=%2B1&b=2 HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(req.decoded_len == 5);   // "a" "+1" "b" "2"
+    assert(req.params[0].name.ptr  == req.decoded + 0);
+    assert(req.params[0].value.ptr == req.decoded + 1);
+    assert(req.params[1].name.ptr  == req.decoded + 3);
+    assert(req.params[1].value.ptr == req.decoded + 4);
+}
+
+static void test_query_raw_target_and_query_unchanged(void) {
+    // decode は in-place ではないので raw の slice はそのまま
+    char buf[256]; struct http_request req;
+    parse("GET /calc?a=%2B1&b=2 HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(slice_eq(req.target, "/calc?a=%2B1&b=2"));
+    assert(slice_eq(req.path, "/calc"));
+    assert(slice_eq(req.query, "a=%2B1&b=2"));
+}
+
+static void test_query_encoded_equals_not_resplit(void) {
+    // '=' で分割した後に decode するので %3D は name の一部
+    char buf[256]; struct http_request req;
+    parse("GET /calc?a%3Db=1 HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(req.param_count == 1);
+    assert(slice_eq(req.params[0].name, "a=b"));
+    assert(slice_eq(req.params[0].value, "1"));
+}
+
+static void test_query_encoded_amp_not_resplit(void) {
+    // '&' で分割した後に decode するので %26 は value の一部
+    char buf[256]; struct http_request req;
+    parse("GET /calc?a=1%262 HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(req.param_count == 1);
+    assert(slice_eq(req.params[0].name, "a"));
+    assert(slice_eq(req.params[0].value, "1&2"));
+}
+
+static void test_query_plus_becomes_space(void) {
+    char buf[256]; struct http_request req;
+    parse("GET /calc?x=a+b HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(slice_eq(req.params[0].value, "a b"));
+}
+
+static void test_query_decodes_name_only_param(void) {
+    char buf[256]; struct http_request req;
+    parse("GET /calc?fl%61g HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(req.param_count == 1);
+    assert(slice_eq(req.params[0].name, "flag"));
+    assert(req.params[0].value.len == 0);
+}
+
+static void test_query_invalid_escape_fails(void) {
+    char buf[256]; struct http_request req;
+    assert(parse("GET /calc?a=%zz HTTP/1.1\r\n\r\n", buf, sizeof buf, &req) == -1);
+    assert(parse("GET /calc?a=% HTTP/1.1\r\n\r\n",   buf, sizeof buf, &req) == -1);
+    assert(parse("GET /calc?a%4=1 HTTP/1.1\r\n\r\n", buf, sizeof buf, &req) == -1);
+}
+
+static void test_query_decoded_capacity_exceeded_fails(void) {
+    // decoded[512] を越える query は -1
+    char buf[1024]; struct http_request req;
+    char raw[1024] = "GET /calc?v=";
+    size_t n = strlen(raw);
+    for (int i = 0; i < 520; i++) raw[n++] = 'x';
+    raw[n] = '\0';
+    strcat(raw, " HTTP/1.1\r\n\r\n");
+
+    assert(parse(raw, buf, sizeof buf, &req) == -1);
+}
+
 // ---- header fields --------------------------------------------------------
 
 static void test_headers_basic(void) {
@@ -907,6 +998,17 @@ int main(void) {
     RUN(test_query_name_only_mixed);
     RUN(test_query_splits_at_first_equals);
     RUN(test_query_caps_at_16_params);
+
+    printf("query params: percent-decoding\n");
+    RUN(test_query_decodes_value);
+    RUN(test_query_decodes_into_decoded_buffer);
+    RUN(test_query_raw_target_and_query_unchanged);
+    RUN(test_query_encoded_equals_not_resplit);
+    RUN(test_query_encoded_amp_not_resplit);
+    RUN(test_query_plus_becomes_space);
+    RUN(test_query_decodes_name_only_param);
+    RUN(test_query_invalid_escape_fails);
+    RUN(test_query_decoded_capacity_exceeded_fails);
 
     printf("header fields\n");
     RUN(test_headers_basic);

@@ -62,7 +62,7 @@
 - [x] `+` を空白にするか決めて，`percent_decode` に入れる
     - (a) 変換しない（`%2B` で送ってもらう）(b) 変換して calc_handler 側で `strip`
     - テスト: `a+b`→ 決めた方の結果
-- [ ] `parse_query_param` の中で，name と value をそれぞれ `decoded` へ decode する
+- [x] `parse_query_param` の中で，name と value をそれぞれ `decoded` へ decode する
     - `&` / `=` で分割した**後**に呼ぶ．`dst = req->decoded + req->decoded_len`，`cap = sizeof decoded - decoded_len`
     - slice は `decoded` 内を指す．成功したら `decoded_len += out_len`
     - decode 失敗と容量不足は -1 を伝搬
