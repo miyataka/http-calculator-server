@@ -16,6 +16,7 @@ struct str_slice strip(struct str_slice slice);
 char* findchr(char* buf, size_t len, char c);
 char* findstr(char* buf, size_t len, char* str);
 int slice_to_long(struct str_slice s, long* out);
+int hex_value(char c);
 
 // ---- helpers --------------------------------------------------------------
 // slice_eq は http.h の公開関数を使う
@@ -650,6 +651,60 @@ static void test_slice_eq_case_sensitive(void) {
     assert(!slice_eq(S("/Calc"), "/calc"));
 }
 
+// ---- hex_value ------------------------------------------------------------
+
+static void test_hex_value_digits(void) {
+    assert(hex_value('0') == 0);
+    assert(hex_value('5') == 5);
+    assert(hex_value('9') == 9);
+}
+
+static void test_hex_value_lowercase(void) {
+    assert(hex_value('a') == 10);
+    assert(hex_value('c') == 12);
+    assert(hex_value('f') == 15);
+}
+
+static void test_hex_value_uppercase(void) {
+    assert(hex_value('A') == 10);
+    assert(hex_value('C') == 12);
+    assert(hex_value('F') == 15);
+}
+
+static void test_hex_value_full_range_in_order(void) {
+    const char* hex = "0123456789abcdef";
+    for (int i = 0; i < 16; i++) {
+        assert(hex_value(hex[i]) == i);
+    }
+    const char* HEX = "0123456789ABCDEF";
+    for (int i = 0; i < 16; i++) {
+        assert(hex_value(HEX[i]) == i);
+    }
+}
+
+static void test_hex_value_beyond_f_fails(void) {
+    // a-z / A-Z まで範囲を広げてしまう回帰を防ぐ
+    assert(hex_value('g') == -1);
+    assert(hex_value('G') == -1);
+    assert(hex_value('z') == -1);
+    assert(hex_value('Z') == -1);
+}
+
+static void test_hex_value_neighbors_fail(void) {
+    // ASCII 上で hex の隣にある文字
+    assert(hex_value('/') == -1);   // '0' の1つ前
+    assert(hex_value(':') == -1);   // '9' の1つ後
+    assert(hex_value('@') == -1);   // 'A' の1つ前
+    assert(hex_value('`') == -1);   // 'a' の1つ前
+}
+
+static void test_hex_value_misc_fail(void) {
+    assert(hex_value(' ') == -1);
+    assert(hex_value('%') == -1);
+    assert(hex_value('\0') == -1);
+    assert(hex_value('-') == -1);
+}
+
 // ---- strip ----------------------------------------------------------------
 
 static void test_strip_both_sides(void) {
@@ -813,6 +868,15 @@ int main(void) {
     RUN(test_slice_eq_respects_len);
     RUN(test_slice_eq_empty);
     RUN(test_slice_eq_case_sensitive);
+
+    printf("hex_value\n");
+    RUN(test_hex_value_digits);
+    RUN(test_hex_value_lowercase);
+    RUN(test_hex_value_uppercase);
+    RUN(test_hex_value_full_range_in_order);
+    RUN(test_hex_value_beyond_f_fails);
+    RUN(test_hex_value_neighbors_fail);
+    RUN(test_hex_value_misc_fail);
 
     printf("strip\n");
     RUN(test_strip_both_sides);

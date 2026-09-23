@@ -47,6 +47,33 @@
 - [ ] （後回し）`%20` などの percent-decoding
     - 今は数値と英字しか使わないので，POST の form 対応と一緒にやる
 
+`percent encoding に対応する`の小さなTODOs（案A: decoded 領域へコピー）
+- [x] `struct http_request` に `char decoded[512];` と `size_t decoded_len;` を追加する
+    - params の name/value の decode 先．`decoded_len` は使用済みバイト数
+- [x] `hex_value(char c)` を実装する
+    - `0-9` / `a-f` / `A-F` を 0〜15 に，それ以外は -1
+    - テスト: `'0'`→0，`'9'`→9，`'a'`→10，`'F'`→15，`'g'`→-1，`' '`→-1
+- [ ] `percent_decode(const char* src, size_t len, char* dst, size_t cap, size_t* out_len)` を実装する
+    - `src[0..len)` を読み，`%XX` は1バイトに，それ以外はそのまま `dst` へ書く
+    - `%` の後ろが2文字ない，または hex でなければ -1
+    - `dst` が `cap` を越えそうなら -1（書く前にチェック）
+    - テスト: `abc`→`abc`，`a%20b`→`a b`，`%2B`→`+`，`%2b`→`+`，`%41%42`→`AB`，`%26`→`&`，`%3D`→`=`，
+      `%`→-1，`%4`→-1，`%zz`→-1，`%%`→-1，`%00`→NUL 1バイト，`cap` 不足→-1 かつ `dst` を触らない
+- [ ] `+` を空白にするか決めて，`percent_decode` に入れる
+    - (a) 変換しない（`%2B` で送ってもらう）(b) 変換して calc_handler 側で `strip`
+    - テスト: `a+b`→ 決めた方の結果
+- [ ] `parse_query_param` の中で，name と value をそれぞれ `decoded` へ decode する
+    - `&` / `=` で分割した**後**に呼ぶ．`dst = req->decoded + req->decoded_len`，`cap = sizeof decoded - decoded_len`
+    - slice は `decoded` 内を指す．成功したら `decoded_len += out_len`
+    - decode 失敗と容量不足は -1 を伝搬
+    - `parse_query_param` が `req` を受け取る必要が出るので，引数に `struct http_request*` を足す
+    - テスト: `?a=%2B1`→value `+1`，`?a%3Db=1`→name `a=b`，`?a=1%262`→value `1&2`（再分割されない），
+      `?a=%zz`→-1，`target` / `query` が raw のまま変わらないこと，既存の query テストが全部通ること
+- [ ] test.sh に `curl 'localhost:8080/calc?a=%2B1&b=2&op=add'` を足す
+- [ ] （後回し）path の decoding
+    - `%2F` の扱いが query と違うので別ルール．今は `/calc` しか使わないので不要
+- [ ] （POST のとき）body の form-urlencoded は `parse_query` をそのまま body に当てる．decode も同じ関数
+
 # 20260922
 
 とにかくやることがたくさんある．勉強のためにあくまでも手で書くのでとても時間がかかる．

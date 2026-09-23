@@ -38,6 +38,9 @@ struct http_request {
     struct str_slice path;
     struct str_slice query;
 
+    char decoded[512];
+    size_t decoded_len;
+
     struct str_slice header_lines[32]; // raw line
     size_t header_line_count;
 
