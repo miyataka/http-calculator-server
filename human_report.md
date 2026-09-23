@@ -36,7 +36,7 @@
 - [x] `get_query_param(req, name)` を実装する
     - `get_header` と同じ形．ただしクエリ名は大文字小字を区別する（`slice_eq` でよい）
     - 見つからなければ NULL
-- [ ] `slice_to_long(str_slice, long* out)` を実装する
+- [x] `slice_to_long(str_slice, long* out)` を実装する
     - `slice_to_size_t` の符号付き版．先頭の `-` を許す
     - テスト: `42`，`-42`，`-`，`4a`，空，overflow
 - [ ] `calc_handler` で `a` / `b` / `op` を取り出して計算し，結果を body に入れて返す
