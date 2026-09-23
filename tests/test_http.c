@@ -17,6 +17,7 @@ char* findchr(char* buf, size_t len, char c);
 char* findstr(char* buf, size_t len, char* str);
 int slice_to_long(struct str_slice s, long* out);
 int hex_value(char c);
+int percent_decode(const char* src, size_t len, char* dst, size_t cap, size_t* out_len);
 
 // ---- helpers --------------------------------------------------------------
 // slice_eq は http.h の公開関数を使う
@@ -705,6 +706,107 @@ static void test_hex_value_misc_fail(void) {
     assert(hex_value('-') == -1);
 }
 
+// ---- percent_decode -------------------------------------------------------
+
+// decode して dst と長さが expected と一致するか
+static int decodes_to(const char* src, const char* expected, size_t expected_len) {
+    char dst[64];
+    memset(dst, 'X', sizeof dst);
+    size_t n = 999;
+    if (percent_decode(src, strlen(src), dst, sizeof dst, &n) != 0) return 0;
+    return n == expected_len && memcmp(dst, expected, expected_len) == 0;
+}
+
+// decode が -1 で，dst と out_len を触らないか
+static int decode_fails(const char* src) {
+    char dst[64];
+    memset(dst, 'X', sizeof dst);
+    size_t n = 999;
+    if (percent_decode(src, strlen(src), dst, sizeof dst, &n) != -1) return 0;
+    return n == 999;
+}
+
+static void test_percent_decode_passthrough(void) {
+    assert(decodes_to("abc", "abc", 3));
+    assert(decodes_to("", "", 0));
+}
+
+static void test_percent_decode_basic(void) {
+    assert(decodes_to("a%20b", "a b", 3));
+    assert(decodes_to("%41", "A", 1));
+}
+
+static void test_percent_decode_case_insensitive_hex(void) {
+    assert(decodes_to("%2B", "+", 1));
+    assert(decodes_to("%2b", "+", 1));
+}
+
+static void test_percent_decode_consecutive(void) {
+    assert(decodes_to("%41%42", "AB", 2));
+}
+
+static void test_percent_decode_delimiters_are_data(void) {
+    // '&' と '=' に戻しても再分割されないのは parse_query 側の責務．ここでは値だけ確認
+    assert(decodes_to("%26", "&", 1));
+    assert(decodes_to("%3D", "=", 1));
+}
+
+static void test_percent_decode_nul_byte(void) {
+    // '\0' が入っても out_len で長さを持つので壊れない
+    assert(decodes_to("%00", "\0", 1));
+    assert(decodes_to("a%00b", "a\0b", 3));
+}
+
+static void test_percent_decode_plus_to_space(void) {
+    // form-urlencoded: '+' は空白，エスケープされた %2B は '+' のまま
+    assert(decodes_to("a+b", "a b", 3));
+    assert(decodes_to("+", " ", 1));
+    assert(decodes_to("a++b", "a  b", 4));
+    assert(decodes_to("%2B+1", "+ 1", 3));
+}
+
+static void test_percent_decode_truncated_escape_fails(void) {
+    assert(decode_fails("%"));
+    assert(decode_fails("%4"));
+    assert(decode_fails("a%"));    // 末尾で切れる: src の外を読まないこと
+    assert(decode_fails("a%4"));
+}
+
+static void test_percent_decode_non_hex_fails(void) {
+    assert(decode_fails("%zz"));
+    assert(decode_fails("%4g"));
+    assert(decode_fails("%g4"));
+    assert(decode_fails("%%"));
+    assert(decode_fails("%%41"));
+}
+
+static void test_percent_decode_cap_exact(void) {
+    char dst[3];
+    size_t n = 0;
+    assert(percent_decode("abc", 3, dst, 3, &n) == 0);
+    assert(n == 3 && memcmp(dst, "abc", 3) == 0);
+
+    assert(percent_decode("%41", 3, dst, 1, &n) == 0);
+    assert(n == 1 && dst[0] == 'A');
+}
+
+static void test_percent_decode_cap_exceeded_fails(void) {
+    char dst[4];
+    size_t n = 999;
+
+    memset(dst, 'X', sizeof dst);
+    assert(percent_decode("abc", 3, dst, 2, &n) == -1);
+    assert(n == 999);
+
+    memset(dst, 'X', sizeof dst);
+    assert(percent_decode("%41", 3, dst, 0, &n) == -1);
+    assert(dst[0] == 'X');   // 書く前に止まる
+
+    memset(dst, 'X', sizeof dst);
+    assert(percent_decode("+", 1, dst, 0, &n) == -1);
+    assert(dst[0] == 'X');
+}
+
 // ---- strip ----------------------------------------------------------------
 
 static void test_strip_both_sides(void) {
@@ -877,6 +979,19 @@ int main(void) {
     RUN(test_hex_value_beyond_f_fails);
     RUN(test_hex_value_neighbors_fail);
     RUN(test_hex_value_misc_fail);
+
+    printf("percent_decode\n");
+    RUN(test_percent_decode_passthrough);
+    RUN(test_percent_decode_basic);
+    RUN(test_percent_decode_case_insensitive_hex);
+    RUN(test_percent_decode_consecutive);
+    RUN(test_percent_decode_delimiters_are_data);
+    RUN(test_percent_decode_nul_byte);
+    RUN(test_percent_decode_plus_to_space);
+    RUN(test_percent_decode_truncated_escape_fails);
+    RUN(test_percent_decode_non_hex_fails);
+    RUN(test_percent_decode_cap_exact);
+    RUN(test_percent_decode_cap_exceeded_fails);
 
     printf("strip\n");
     RUN(test_strip_both_sides);

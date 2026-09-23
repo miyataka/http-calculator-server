@@ -53,13 +53,13 @@
 - [x] `hex_value(char c)` を実装する
     - `0-9` / `a-f` / `A-F` を 0〜15 に，それ以外は -1
     - テスト: `'0'`→0，`'9'`→9，`'a'`→10，`'F'`→15，`'g'`→-1，`' '`→-1
-- [ ] `percent_decode(const char* src, size_t len, char* dst, size_t cap, size_t* out_len)` を実装する
+- [x] `percent_decode(const char* src, size_t len, char* dst, size_t cap, size_t* out_len)` を実装する
     - `src[0..len)` を読み，`%XX` は1バイトに，それ以外はそのまま `dst` へ書く
     - `%` の後ろが2文字ない，または hex でなければ -1
     - `dst` が `cap` を越えそうなら -1（書く前にチェック）
     - テスト: `abc`→`abc`，`a%20b`→`a b`，`%2B`→`+`，`%2b`→`+`，`%41%42`→`AB`，`%26`→`&`，`%3D`→`=`，
       `%`→-1，`%4`→-1，`%zz`→-1，`%%`→-1，`%00`→NUL 1バイト，`cap` 不足→-1 かつ `dst` を触らない
-- [ ] `+` を空白にするか決めて，`percent_decode` に入れる
+- [x] `+` を空白にするか決めて，`percent_decode` に入れる
     - (a) 変換しない（`%2B` で送ってもらう）(b) 変換して calc_handler 側で `strip`
     - テスト: `a+b`→ 決めた方の結果
 - [ ] `parse_query_param` の中で，name と value をそれぞれ `decoded` へ decode する

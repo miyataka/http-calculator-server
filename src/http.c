@@ -373,3 +373,29 @@ int hex_value(char c) {
     if ('A' <= c && c <= 'F') return c - 'A' + 10;
     return -1;
 }
+
+int percent_decode(const char* src, size_t len, char* dst, size_t cap, size_t* out_len) {
+    size_t r = 0, w = 0;
+    while (r < len) {
+        if (w >= cap) return -1;
+        if (src[r] == '%') {
+            if (r+2 >= len) return -1;
+            int hi = hex_value(src[r+1]);
+            int lo = hex_value(src[r+2]);
+            if (hi == -1 || lo == -1) return -1;
+            dst[w] = (char)(hi * 16 + lo);
+            w++;
+            r += 3;
+        } else if (src[r] == '+') {
+            dst[w] = ' ';
+            w++;
+            r++;
+        } else {
+            dst[w] = src[r];
+            w++;
+            r++;
+        }
+    }
+    *out_len = w;
+    return 0;
+}
