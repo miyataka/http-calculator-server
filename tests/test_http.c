@@ -394,6 +394,85 @@ static void test_get_header_on_empty_request(void) {
     assert(get_header(&req, "Host") == NULL);
 }
 
+// ---- get_query_param ------------------------------------------------------
+
+static void test_get_query_param_exact(void) {
+    char buf[256]; struct http_request req;
+    parse("GET /calc?a=1&b=2&op=add HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    struct http_query_param* p = get_query_param(&req, "op");
+    assert(p != NULL);
+    assert(slice_eq(p->name, "op"));
+    assert(slice_eq(p->value, "add"));
+}
+
+static void test_get_query_param_each_entry(void) {
+    // 反転バグの回帰: それぞれの名前が自分自身の entry を返す
+    char buf[256]; struct http_request req;
+    parse("GET /calc?a=1&b=2 HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    struct http_query_param* a = get_query_param(&req, "a");
+    struct http_query_param* b = get_query_param(&req, "b");
+    assert(a != NULL && slice_eq(a->value, "1"));
+    assert(b != NULL && slice_eq(b->value, "2"));
+    assert(a != b);
+}
+
+static void test_get_query_param_case_sensitive(void) {
+    char buf[256]; struct http_request req;
+    parse("GET /calc?op=add HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(get_query_param(&req, "op") != NULL);
+    assert(get_query_param(&req, "OP") == NULL);
+    assert(get_query_param(&req, "Op") == NULL);
+}
+
+static void test_get_query_param_not_found(void) {
+    char buf[256]; struct http_request req;
+    parse("GET /calc?a=1 HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(get_query_param(&req, "b") == NULL);
+}
+
+static void test_get_query_param_prefix_does_not_match(void) {
+    char buf[256]; struct http_request req;
+    parse("GET /calc?abc=1 HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(get_query_param(&req, "ab") == NULL);    // 1文字短い
+    assert(get_query_param(&req, "abcd") == NULL);  // 1文字長い
+}
+
+static void test_get_query_param_returns_first_match(void) {
+    char buf[256]; struct http_request req;
+    parse("GET /calc?x=1&x=2 HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    struct http_query_param* p = get_query_param(&req, "x");
+    assert(p != NULL);
+    assert(slice_eq(p->value, "1"));
+}
+
+static void test_get_query_param_name_only(void) {
+    // "?flag" は存在するが value 空．NULL と区別できること
+    char buf[256]; struct http_request req;
+    parse("GET /calc?flag HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    struct http_query_param* p = get_query_param(&req, "flag");
+    assert(p != NULL);
+    assert(p->value.len == 0);
+}
+
+static void test_get_query_param_no_query(void) {
+    char buf[256]; struct http_request req;
+    parse("GET /calc HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(get_query_param(&req, "a") == NULL);
+}
+
+static void test_get_query_param_on_empty_request(void) {
+    struct http_request req = {0};
+    assert(get_query_param(&req, "a") == NULL);
+}
+
 // ---- slice_to_size_t ------------------------------------------------------
 
 static struct str_slice S(const char* s) {
@@ -595,6 +674,17 @@ int main(void) {
     RUN(test_get_header_prefix_does_not_match);
     RUN(test_get_header_returns_first_match);
     RUN(test_get_header_on_empty_request);
+
+    printf("get_query_param\n");
+    RUN(test_get_query_param_exact);
+    RUN(test_get_query_param_each_entry);
+    RUN(test_get_query_param_case_sensitive);
+    RUN(test_get_query_param_not_found);
+    RUN(test_get_query_param_prefix_does_not_match);
+    RUN(test_get_query_param_returns_first_match);
+    RUN(test_get_query_param_name_only);
+    RUN(test_get_query_param_no_query);
+    RUN(test_get_query_param_on_empty_request);
 
     printf("slice_to_size_t\n");
     RUN(test_slice_to_size_t_basic);
