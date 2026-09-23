@@ -4,6 +4,7 @@
 // 外部ライブラリなし．assert ベース．失敗すると abort する．
 
 #include <assert.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -14,6 +15,7 @@
 struct str_slice strip(struct str_slice slice);
 char* findchr(char* buf, size_t len, char c);
 char* findstr(char* buf, size_t len, char* str);
+int slice_to_long(struct str_slice s, long* out);
 
 // ---- helpers --------------------------------------------------------------
 // slice_eq は http.h の公開関数を使う
@@ -528,6 +530,99 @@ static void test_slice_to_size_t_overflow_fails(void) {
     assert(slice_to_size_t(S("99999999999999999999999"), &v) == -1);
 }
 
+// ---- slice_to_long --------------------------------------------------------
+
+static void test_slice_to_long_positive(void) {
+    long v = 999;
+    assert(slice_to_long(S("42"), &v) == 0);
+    assert(v == 42);
+}
+
+static void test_slice_to_long_negative(void) {
+    long v = 999;
+    assert(slice_to_long(S("-42"), &v) == 0);
+    assert(v == -42);
+}
+
+static void test_slice_to_long_explicit_plus(void) {
+    long v = 999;
+    assert(slice_to_long(S("+42"), &v) == 0);
+    assert(v == 42);
+}
+
+static void test_slice_to_long_zero_variants(void) {
+    long v;
+    v = 999; assert(slice_to_long(S("0"), &v) == 0 && v == 0);
+    v = 999; assert(slice_to_long(S("+0"), &v) == 0 && v == 0);
+    v = 999; assert(slice_to_long(S("-0"), &v) == 0 && v == 0);
+}
+
+static void test_slice_to_long_respects_len(void) {
+    long v = 999;
+    struct str_slice s = { .ptr = "-42xyz", .len = 3 };
+    assert(slice_to_long(s, &v) == 0);
+    assert(v == -42);
+}
+
+static void test_slice_to_long_empty_fails(void) {
+    long v = 999;
+    assert(slice_to_long(S(""), &v) == -1);
+    assert(v == 999);  // 失敗時は out を触らない
+}
+
+static void test_slice_to_long_sign_only_fails(void) {
+    long v = 999;
+    assert(slice_to_long(S("-"), &v) == -1);
+    assert(slice_to_long(S("+"), &v) == -1);
+    assert(v == 999);
+}
+
+static void test_slice_to_long_non_digit_fails(void) {
+    long v = 999;
+    assert(slice_to_long(S("4a"), &v) == -1);
+    assert(slice_to_long(S("-4a"), &v) == -1);
+    assert(v == 999);
+}
+
+static void test_slice_to_long_double_sign_fails(void) {
+    long v = 999;
+    assert(slice_to_long(S("--1"), &v) == -1);
+    assert(slice_to_long(S("+-1"), &v) == -1);
+    assert(slice_to_long(S("++1"), &v) == -1);
+}
+
+static void test_slice_to_long_max(void) {
+    long v = 0;
+    assert(slice_to_long(S("9223372036854775807"), &v) == 0);  // LONG_MAX
+    assert(v == LONG_MAX);
+}
+
+static void test_slice_to_long_max_plus_one_fails(void) {
+    // 負で累積すると LONG_MIN まで届くが，正に戻せないので -1
+    long v = 999;
+    assert(slice_to_long(S("9223372036854775808"), &v) == -1);
+    assert(v == 999);
+}
+
+static void test_slice_to_long_min(void) {
+    // 負方向で累積しているので LONG_MIN そのものは読める
+    long v = 0;
+    assert(slice_to_long(S("-9223372036854775808"), &v) == 0);  // LONG_MIN
+    assert(v == LONG_MIN);
+}
+
+static void test_slice_to_long_min_minus_one_fails(void) {
+    long v = 999;
+    assert(slice_to_long(S("-9223372036854775809"), &v) == -1);
+    assert(v == 999);
+}
+
+static void test_slice_to_long_way_too_long_fails(void) {
+    long v = 999;
+    assert(slice_to_long(S("99999999999999999999"), &v) == -1);
+    assert(slice_to_long(S("-99999999999999999999"), &v) == -1);
+}
+
 // ---- slice_eq -------------------------------------------------------------
 
 static void test_slice_eq_match(void) {
@@ -695,6 +790,22 @@ int main(void) {
     RUN(test_slice_to_size_t_empty_fails);
     RUN(test_slice_to_size_t_max);
     RUN(test_slice_to_size_t_overflow_fails);
+
+    printf("slice_to_long\n");
+    RUN(test_slice_to_long_positive);
+    RUN(test_slice_to_long_negative);
+    RUN(test_slice_to_long_explicit_plus);
+    RUN(test_slice_to_long_zero_variants);
+    RUN(test_slice_to_long_respects_len);
+    RUN(test_slice_to_long_empty_fails);
+    RUN(test_slice_to_long_sign_only_fails);
+    RUN(test_slice_to_long_non_digit_fails);
+    RUN(test_slice_to_long_double_sign_fails);
+    RUN(test_slice_to_long_max);
+    RUN(test_slice_to_long_max_plus_one_fails);
+    RUN(test_slice_to_long_min);
+    RUN(test_slice_to_long_min_minus_one_fails);
+    RUN(test_slice_to_long_way_too_long_fails);
 
     printf("slice_eq\n");
     RUN(test_slice_eq_match);

@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include "tcp_server.h"
 #include "http.h"
@@ -221,6 +222,29 @@ int slice_to_size_t(struct str_slice s, size_t* out) {
         size_t d = s.ptr[i] - '0';
         if (v > (SIZE_MAX - d) / 10) return -1; // overflow
         v = v * 10 + d;
+    }
+    *out = v;
+    return 0;
+}
+
+int slice_to_long(struct str_slice s, long int* out) {
+    size_t i = 0;
+    int neg = 0;
+    if (s.len > 0 && (s.ptr[0] == '-' || s.ptr[0] == '+')) {
+        neg = (s.ptr[0] == '-');
+        i++;
+    }
+    if (i >= s.len) return -1; // 空 or 符号のみ
+    long v = 0;
+    for (; i < s.len; i++) {
+        if (!isdigit((unsigned char)s.ptr[i])) return -1;
+        int d = s.ptr[i] - '0';
+        if (v < (LONG_MIN + d) / 10) return -1; // overflow
+        v = v * 10 - d;
+    }
+    if (!neg) {
+        if (v == LONG_MIN) return -1;
+        v = -v;
     }
     *out = v;
     return 0;
