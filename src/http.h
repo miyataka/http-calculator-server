@@ -25,6 +25,11 @@ struct http_header_field {
   struct str_slice value;
 };
 
+struct http_query_param {
+  struct str_slice name;
+  struct str_slice value;
+};
+
 struct http_request {
     enum http_method method;
     struct str_slice target;
@@ -38,6 +43,9 @@ struct http_request {
 
     struct http_header_field headers[32]; // parsed field
     size_t header_count;
+
+    struct http_query_param params[16];
+    size_t param_count;
 };
 
 ssize_t recv_http_header(int client_fd, char* buffer, size_t buffer_size);

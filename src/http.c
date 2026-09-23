@@ -192,6 +192,87 @@ int parse_request_header_field(char* buf, size_t len, struct http_header_field* 
     return 0;
 }
 
+
+struct http_header_field* get_header(struct http_request* req, char* name) {
+    size_t len = strlen(name);
+
+    for (int i = 0; i < req->header_count; i++) {
+        if (req->headers[i].name.len != len) continue;
+
+        // tolowerしてから比較する
+        for (int j = 0; j < req->headers[i].name.len; j++) {
+            char h = (char)tolower((unsigned char)req->headers[i].name.ptr[j]);
+            char v = (char)tolower((unsigned char)name[j]);
+            if (h != v) break;
+
+            if (j + 1 == req->headers[i].name.len) {
+                return &req->headers[i];
+            }
+        }
+    }
+    return NULL;
+}
+
+int slice_to_size_t(struct str_slice s, size_t* out) {
+    if (s.len == 0) return -1;
+    size_t v = 0;
+    for (size_t i = 0; i < s.len; i++) {
+        if (!isdigit((unsigned char)s.ptr[i])) return -1;
+        size_t d = s.ptr[i] - '0';
+        if (v > (SIZE_MAX - d) / 10) return -1; // overflow
+        v = v * 10 + d;
+    }
+    *out = v;
+    return 0;
+}
+
+int slice_eq(struct str_slice s, const char* str) {
+    size_t n = strlen(str);
+    return s.len == n && memcmp(s.ptr, str, n) == 0;
+}
+
+int parse_query_param(char* buf, size_t len, struct http_query_param* dst) {
+    char* c_eq = findchr(buf, len, '=');
+    if (c_eq == NULL) return -1;
+
+    struct str_slice name = {
+        .ptr = buf,
+        .len = c_eq - buf,
+    };
+    dst->name = name;
+
+    struct str_slice v = {
+        .ptr = c_eq + 1,
+        .len = buf+len - c_eq - 1,
+    };
+    dst->value = v;
+
+    return 0;
+}
+
+int parse_query(char *buf, size_t len, struct http_request* req) {
+    char* next_param = buf;
+    char* pos_end = next_param + len;
+    int i = 0;
+
+    while (next_param < pos_end && i < 16) {
+        char* pos_amp = findchr(next_param, pos_end - next_param, '&');
+        if (pos_amp == NULL) pos_amp = pos_end;
+        if (pos_amp == next_param) { // 空要素は読み飛ばす. 先頭に`&`あるいは`&&`などのとき
+            next_param = pos_amp + 1;
+            continue;
+        }
+        if (parse_query_param(next_param, pos_amp - next_param, &req->params[i]) == -1) {
+            return -1;
+        }
+
+        next_param = pos_amp + 1;
+        i++;
+    }
+    req->param_count = i;
+    return 0;
+}
+
 int parse_request_target(struct http_request* req) {
     req->path = req->target;
     if (req->target.len <= 1) {
@@ -213,7 +294,8 @@ int parse_request_target(struct http_request* req) {
     };
     req->query = query;
 
-    return 0;
+    // query to params
+    return parse_query(req->query.ptr, req->query.len, req);
 }
 
 int parse_http_request_head(char* buf, struct http_request* req) {
@@ -256,42 +338,4 @@ int parse_http_request_head(char* buf, struct http_request* req) {
     }
 
     return end_of_header - buf + 4; // +4 is "\r\n\r\n" length
-}
-
-struct http_header_field* get_header(struct http_request* req, char* name) {
-    size_t len = strlen(name);
-
-    for (int i = 0; i < req->header_count; i++) {
-        if (req->headers[i].name.len != len) continue;
-
-        // tolowerしてから比較する
-        for (int j = 0; j < req->headers[i].name.len; j++) {
-            char h = (char)tolower((unsigned char)req->headers[i].name.ptr[j]);
-            char v = (char)tolower((unsigned char)name[j]);
-            if (h != v) break;
-
-            if (j + 1 == req->headers[i].name.len) {
-                return &req->headers[i];
-            }
-        }
-    }
-    return NULL;
-}
-
-int slice_to_size_t(struct str_slice s, size_t* out) {
-    if (s.len == 0) return -1;
-    size_t v = 0;
-    for (size_t i = 0; i < s.len; i++) {
-        if (!isdigit((unsigned char)s.ptr[i])) return -1;
-        size_t d = s.ptr[i] - '0';
-        if (v > (SIZE_MAX - d) / 10) return -1; // overflow
-        v = v * 10 + d;
-    }
-    *out = v;
-    return 0;
-}
-
-int slice_eq(struct str_slice s, const char* str) {
-    size_t n = strlen(str);
-    return s.len == n && memcmp(s.ptr, str, n) == 0;
 }
