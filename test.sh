@@ -79,10 +79,11 @@ expect_http "GET /nope is 404"                    404 "Not Found"  "$BASE/nope"
 expect_http "GET /calculator does not match /calc" 404 "Not Found"  "$BASE/calculator"
 
 echo "query string"
-expect_http "GET /calc with query still routes"   200 "calclated"  "$BASE/calc?a=1&b=2&op=add"
-expect_http "percent-encoded query is accepted"   200 "calclated"  "$BASE/calc?a=%2B1&b=2&op=add"
-expect_http "plus in query is accepted"           200 "calclated"  "$BASE/calc?a=1+2"
-expect_http "invalid percent escape is 400"       400 "Bad Request" "$BASE/calc?a=%zz"
+# calc の計算ロジックが入るまでは body は固定．入ったら期待値を計算結果に差し替える
+expect_http "GET /calc with query still routes"   200 "calclated"  "$BASE/calc?q=42"
+expect_http "percent-encoded plus is accepted"    200 "calclated"  "$BASE/calc?q=1%2B2"
+expect_http "raw plus (= space) is accepted"      200 "calclated"  "$BASE/calc?q=1+2"
+expect_http "invalid percent escape is 400"       400 "Bad Request" "$BASE/calc?q=%zz"
 
 echo "malformed request"
 expect_raw  "request line without version is 400" "HTTP/1.1 400" 'GET /calc\r\n\r\n'

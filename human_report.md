@@ -39,13 +39,10 @@
 - [x] `slice_to_long(str_slice, long* out)` を実装する
     - `slice_to_size_t` の符号付き版．先頭の `-` を許す
     - テスト: `42`，`-42`，`-`，`4a`，空，overflow
-- [ ] `calc_handler` で `a` / `b` / `op` を取り出して計算し，結果を body に入れて返す
-    - op は `add` / `sub` / `mul` / `div` の4つから
-    - param 不足・数値化失敗・未知の op・ゼロ除算は 400
+- [ ] `calc_handler` で `q` を取り出して計算し，結果を body に入れて返す
+    - param 不足・数値化失敗・式として未成立・ゼロ除算は 400
     - body は `snprintf` で組み立て，Content-Length も実長から計算する
-    - test.sh に `curl 'localhost:8080/calc?a=1&b=2&op=add'` → `3` のケースを足す
-- [ ] （後回し）`%20` などの percent-decoding
-    - 今は数値と英字しか使わないので，POST の form 対応と一緒にやる
+    - test.sh に `curl 'localhost:8080/calc?q=1%2B2'` → `3` のケースを足す
 
 `percent encoding に対応する`の小さなTODOs（案A: decoded 領域へコピー）
 - [x] `struct http_request` に `char decoded[512];` と `size_t decoded_len;` を追加する
@@ -69,7 +66,7 @@
     - `parse_query_param` が `req` を受け取る必要が出るので，引数に `struct http_request*` を足す
     - テスト: `?a=%2B1`→value `+1`，`?a%3Db=1`→name `a=b`，`?a=1%262`→value `1&2`（再分割されない），
       `?a=%zz`→-1，`target` / `query` が raw のまま変わらないこと，既存の query テストが全部通ること
-- [ ] test.sh に `curl 'localhost:8080/calc?a=%2B1&b=2&op=add'` を足す
+- [ ] test.sh に `curl 'localhost:8080/calc?q=1%2B2'` を足す
 - [ ] （後回し）path の decoding
     - `%2F` の扱いが query と違うので別ルール．今は `/calc` しか使わないので不要
 - [ ] （POST のとき）body の form-urlencoded は `parse_query` をそのまま body に当てる．decode も同じ関数
