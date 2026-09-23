@@ -5,7 +5,7 @@
 # 20260923
 
 大きなTODOs
-- [ ] query paramsに対応する
+- [x] query paramsに対応する
 - [ ] response応答を関数化
 - [ ] POSTに対応する
     - request bodyを読めるようにする
@@ -66,7 +66,7 @@
     - `parse_query_param` が `req` を受け取る必要が出るので，引数に `struct http_request*` を足す
     - テスト: `?a=%2B1`→value `+1`，`?a%3Db=1`→name `a=b`，`?a=1%262`→value `1&2`（再分割されない），
       `?a=%zz`→-1，`target` / `query` が raw のまま変わらないこと，既存の query テストが全部通ること
-- [ ] test.sh に `curl 'localhost:8080/calc?q=1%2B2'` を足す
+- [x] test.sh に `curl 'localhost:8080/calc?q=1%2B2'` を足す
 - [ ] （後回し）path の decoding
     - `%2F` の扱いが query と違うので別ルール．今は `/calc` しか使わないので不要
 - [ ] （POST のとき）body の form-urlencoded は `parse_query` をそのまま body に当てる．decode も同じ関数
