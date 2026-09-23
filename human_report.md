@@ -25,11 +25,11 @@
 `query string を parse する`の小さなTODOs
 - [x] `struct query_param { struct str_slice name; struct str_slice value; }` と
       `params[16]` / `param_count` を http_request に追加する
-- [ ] `parse_query_param(str_slice pair, struct query_param* out)` を実装する
+- [x] `parse_query_param(str_slice pair, struct query_param* out)` を実装する
     - `a=1` を最初の `=` で name / value に分ける
     - `=` が無ければ name のみで value は空 slice（`?flag` のような形）
     - テスト: `a=1`，`a=`，`a`，`a=b=c` → value `b=c`
-- [ ] `parse_query(req)` を実装し，`query` を `&` で区切って `parse_query_param` に通す
+- [x] `parse_query(req)` を実装し，`query` を `&` で区切って `parse_query_param` に通す
     - 空要素（`a=1&&b=2`）は読み飛ばす
     - `params[16]` を越えたら -1
     - テスト: `a=1&b=2`，空 query → count 0，`a=1&&b=2`，先頭・末尾の `&`

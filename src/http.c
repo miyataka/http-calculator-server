@@ -250,9 +250,9 @@ int parse_query_param(char* buf, size_t len, struct http_query_param* dst) {
     return 0;
 }
 
-int parse_query(char *buf, size_t len, struct http_request* req) {
-    char* next_param = buf;
-    char* pos_end = next_param + len;
+int parse_query(struct http_request* req) {
+    char* next_param = req->query.ptr;
+    const char* pos_end = req->query.ptr + req->query.len;
     int i = 0;
 
     while (next_param < pos_end && i < 16) {
@@ -295,7 +295,7 @@ int parse_request_target(struct http_request* req) {
     req->query = query;
 
     // query to params
-    return parse_query(req->query.ptr, req->query.len, req);
+    return parse_query(req);
 }
 
 int parse_http_request_head(char* buf, struct http_request* req) {
