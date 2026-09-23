@@ -33,7 +33,7 @@
     - 空要素（`a=1&&b=2`）は読み飛ばす
     - `params[16]` を越えたら -1
     - テスト: `a=1&b=2`，空 query → count 0，`a=1&&b=2`，先頭・末尾の `&`
-- [ ] `get_query_param(req, name)` を実装する
+- [x] `get_query_param(req, name)` を実装する
     - `get_header` と同じ形．ただしクエリ名は大文字小字を区別する（`slice_eq` でよい）
     - 見つからなければ NULL
 - [ ] `slice_to_long(str_slice, long* out)` を実装する

@@ -233,20 +233,14 @@ int slice_eq(struct str_slice s, const char* str) {
 
 int parse_query_param(char* buf, size_t len, struct http_query_param* dst) {
     char* c_eq = findchr(buf, len, '=');
-    if (c_eq == NULL) return -1;
+    if (c_eq == NULL) {
+        dst->name = (struct str_slice){ .ptr = buf, .len = len };
+        dst->value = (struct str_slice){ .ptr = buf+len, .len = 0 };
+        return 0;
+    }
 
-    struct str_slice name = {
-        .ptr = buf,
-        .len = c_eq - buf,
-    };
-    dst->name = name;
-
-    struct str_slice v = {
-        .ptr = c_eq + 1,
-        .len = buf+len - c_eq - 1,
-    };
-    dst->value = v;
-
+    dst->name = (struct str_slice){ .ptr = buf, .len = c_eq - buf };;
+    dst->value = (struct str_slice){ .ptr = c_eq + 1, .len = buf+len - c_eq - 1 };;
     return 0;
 }
 
@@ -338,4 +332,17 @@ int parse_http_request_head(char* buf, struct http_request* req) {
     }
 
     return end_of_header - buf + 4; // +4 is "\r\n\r\n" length
+}
+
+struct http_query_param* get_query_param(struct http_request* req, char* name) {
+    size_t len = strlen(name);
+
+    for (int i = 0; i < req->param_count; i++) {
+        if (req->params[i].name.len != len) continue;
+
+        if (slice_eq(req->params[i].name, name) == 0) {
+            return &req->params[i];
+        }
+    }
+    return NULL;
 }

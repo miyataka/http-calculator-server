@@ -216,11 +216,27 @@ static void test_query_empty_value(void) {
     assert(req.params[0].value.len == 0);
 }
 
-static void test_query_missing_equals_fails(void) {
+static void test_query_name_only(void) {
+    // "?flag" の形: '=' が無ければ name のみで value は空
     char buf[256]; struct http_request req;
-    int rc = parse("GET /calc?a HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+    int rc = parse("GET /calc?flag HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
 
-    assert(rc == -1);
+    assert(rc > 0);
+    assert(req.param_count == 1);
+    assert(slice_eq(req.params[0].name, "flag"));
+    assert(req.params[0].value.len == 0);
+}
+
+static void test_query_name_only_mixed(void) {
+    char buf[256]; struct http_request req;
+    int rc = parse("GET /calc?a&b=2 HTTP/1.1\r\n\r\n", buf, sizeof buf, &req);
+
+    assert(rc > 0);
+    assert(req.param_count == 2);
+    assert(slice_eq(req.params[0].name, "a"));
+    assert(req.params[0].value.len == 0);
+    assert(slice_eq(req.params[1].name, "b"));
+    assert(slice_eq(req.params[1].value, "2"));
 }
 
 static void test_query_splits_at_first_equals(void) {
@@ -556,7 +572,8 @@ int main(void) {
     RUN(test_query_skips_empty_segment);
     RUN(test_query_skips_leading_and_trailing_amp);
     RUN(test_query_empty_value);
-    RUN(test_query_missing_equals_fails);
+    RUN(test_query_name_only);
+    RUN(test_query_name_only_mixed);
     RUN(test_query_splits_at_first_equals);
     RUN(test_query_caps_at_16_params);
 
