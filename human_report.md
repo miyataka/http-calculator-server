@@ -33,7 +33,7 @@
     - 先頭1文字を飛ばして `+ - * /` を探す（先頭は lhs の符号）
     - 見つからなければ -1
     - テスト: `1+2`→1，`-1+2`→2，`1`→-1，`+`→-1，`1+2+3`→1（最初のもの）
-- [ ] `parse_calc_expr(str_slice s, struct calc_expr* out)` を実装する
+- [x] `parse_calc_expr(str_slice s, struct calc_expr* out)` を実装する
     - `find_operator` で lhs / op / rhs に切り，lhs と rhs をそれぞれ `strip` してから `slice_to_long`
     - lhs か rhs が空，または数値化できなければ -1
     - `1++2` は rhs が `+2` として読めるので 3（許容）
