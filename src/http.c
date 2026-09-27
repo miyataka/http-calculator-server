@@ -410,3 +410,28 @@ struct http_query_param* get_query_param(struct http_request* req, char* name) {
     }
     return NULL;
 }
+
+struct http_response create_http_response(int status_code) {
+    enum http_status_code status;
+    switch (status_code) {
+        case 200:
+            status = HTTP_STATUS_OK;
+            break;
+        case 400:
+            status = HTTP_STATUS_BAD_REQUEST;
+            break;
+        case 404:
+            status = HTTP_STATUS_NOT_FOUND;
+            break;
+        default:
+            status = HTTP_STATUS_OK; // default to 200 OK
+            break;
+    }
+
+    return (struct http_response){
+        .version = HTTP_VERSION_1_1,
+        .status = status,
+        .headers = {0},
+        .header_count = 0,
+    };
+}

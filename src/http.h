@@ -15,6 +15,13 @@ enum http_version {
     // TODO later
 };
 
+enum http_status_code {
+    HTTP_STATUS_OK = 200,
+    HTTP_STATUS_BAD_REQUEST = 400,
+    HTTP_STATUS_NOT_FOUND = 404,
+    // TODO later
+};
+
 struct str_slice {
   const char* ptr;
   size_t len;
@@ -51,6 +58,14 @@ struct http_request {
     size_t param_count;
 };
 
+struct http_response {
+    enum http_version version;
+    enum http_status_code status;
+
+    struct http_header_field headers[32]; // parsed field
+    size_t header_count;
+};
+
 ssize_t recv_http_header(int client_fd, char* buffer, size_t buffer_size);
 ssize_t response_fixed(int client_fd);
 int parse_http_request_head(char* buf, struct http_request* req);
@@ -58,3 +73,4 @@ struct http_header_field* get_header(struct http_request* req, char* name);
 int slice_to_size_t(struct str_slice s, size_t* out);
 int slice_eq(struct str_slice s, const char* str);
 struct http_query_param* get_query_param(struct http_request* req, char* name);
+struct http_response create_http_response(int status_code);

@@ -2,6 +2,92 @@
 
 記載順は日付の降順
 
+# 20260927
+
+大きなTODOs
+- [ ] response応答を関数化
+- [ ] POSTに対応する
+    - request bodyを読めるようにする
+- [ ] connection: closeを固定でいれる
+- [ ] keep-alive対応をいれる
+
+
+`http headerをparseする`をやるための小さなTODOs
+- [ ] `recv_http_body(fd, buf, size, already_have, content_length)` を実装する
+    - head と一緒に届いた body の余りを差し引き、不足分だけ recv
+- [ ] `receive_http_request(fd, buf, size, req)` を実装する
+    - recv_http_head → parse_http_request_head → (Content-Length があれば) recv_http_body
+    - `req->body` を埋める
+- [ ] main.c の recv / parse 呼び出しを `receive_http_request` 1回に置き換える
+- [ ] POST /calc で body を読んで応答する
+
+`query string を parse する`の小さなTODOs
+- [ ] `calc_handler` で `q` を取り出して計算し，結果を body に入れて返す
+    - param 不足・数値化失敗・式として未成立・ゼロ除算は 400
+    - body は `snprintf` で組み立て，Content-Length も実長から計算する
+    - test.sh に `curl 'localhost:8080/calc?q=1%2B2'` → `3` のケースを足す
+
+`calc_handler の式 parser`の小さなTODOs
+- [ ] `struct calc_expr { long lhs; char op; long rhs; }` を定義する
+- [ ] `find_operator(str_slice s, size_t* pos)` を実装する
+    - 先頭1文字を飛ばして `+ - * /` を探す（先頭は lhs の符号）
+    - 見つからなければ -1
+    - テスト: `1+2`→1，`-1+2`→2，`1`→-1，`+`→-1，`1+2+3`→1（最初のもの）
+- [ ] `parse_calc_expr(str_slice s, struct calc_expr* out)` を実装する
+    - `find_operator` で lhs / op / rhs に切り，lhs と rhs をそれぞれ `strip` してから `slice_to_long`
+    - lhs か rhs が空，または数値化できなければ -1
+    - `1++2` は rhs が `+2` として読めるので 3（許容）
+    - テスト: `1+2`，`10-3`，`4*5`，`9/3`，`-1+2`，`1+-2`，`1++2`→3，
+      ` 1 + 2 `→3（両端と演算子周りの空白），`1 2`→-1（演算子なし），
+      `1+`→-1，`+2`→-1，`1`→-1，`a+b`→-1，`1+2+3`→-1（rhs が `2+3`）
+- [ ] `eval_calc_expr(const struct calc_expr* e, long* out)` を実装する
+    - `+ - *` は `__builtin_add_overflow` / `__builtin_sub_overflow` / `__builtin_mul_overflow`
+    - `/` は `rhs == 0` と `lhs == LONG_MIN && rhs == -1` を -1
+    - テスト: 各演算1件，`LONG_MAX + 1`→-1，`LONG_MIN - 1`→-1，`LONG_MAX * 2`→-1，
+      `1/0`→-1，`LONG_MIN / -1`→-1，`7/2`→3，`-7/2`→-3
+- [ ] `send_response(fd, status, body, body_len)` を http_handler に実装する
+    - status line とヘッダーを `snprintf` で組み，`Content-Length` は `body_len` から
+    - 既存の固定レスポンス4つを置き換える（`response応答を関数化` の項目）
+    - テスト: test.sh の既存10件が通ること
+- [ ] `calc_handler` を繋ぐ
+    - `get_query_param(req, "q")` が NULL → 400
+    - `parse_calc_expr` が -1 → 400
+    - `eval_calc_expr` が -1 → 400
+    - 結果を `snprintf("%ld")` で body にして 200
+- [ ] test.sh の期待値を差し替える
+    - `q=1%2B2`→`3`，`q=10-3`→`7`，`q=4*5`→`20`，`q=9/3`→`3`，`q=1%2B2` with spaces（`q=1+%2B+2` → `1 + 2`）→`3`
+    - `q=1/0`→400，`q=abc`→400，`q` なし→400，`q=1+2`（`1 2` になる）→400
+
+# 20260924
+
+大きなTODOs
+- [ ] response応答を関数化
+- [ ] POSTに対応する
+    - request bodyを読めるようにする
+- [ ] connection: closeを固定でいれる
+- [ ] keep-alive対応をいれる
+
+
+`http headerをparseする`をやるための小さなTODOs
+- [ ] `recv_http_body(fd, buf, size, already_have, content_length)` を実装する
+    - head と一緒に届いた body の余りを差し引き、不足分だけ recv
+- [ ] `receive_http_request(fd, buf, size, req)` を実装する
+    - recv_http_head → parse_http_request_head → (Content-Length があれば) recv_http_body
+    - `req->body` を埋める
+- [ ] main.c の recv / parse 呼び出しを `receive_http_request` 1回に置き換える
+- [ ] POST /calc で body を読んで応答する
+
+`query string を parse する`の小さなTODOs
+- [ ] `calc_handler` で `q` を取り出して計算し，結果を body に入れて返す
+    - param 不足・数値化失敗・式として未成立・ゼロ除算は 400
+    - body は `snprintf` で組み立て，Content-Length も実長から計算する
+    - test.sh に `curl 'localhost:8080/calc?q=1%2B2'` → `3` のケースを足す
+
+`percent encoding に対応する`の小さなTODOs（案A: decoded 領域へコピー）
+- [ ] （後回し）path の decoding
+    - `%2F` の扱いが query と違うので別ルール．今は `/calc` しか使わないので不要
+- [ ] （POST のとき）body の form-urlencoded は `parse_query` をそのまま body に当てる．decode も同じ関数
+
 # 20260923
 
 とにかくやることがたくさんある（再掲）．
