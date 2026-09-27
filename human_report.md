@@ -28,8 +28,8 @@
     - test.sh に `curl 'localhost:8080/calc?q=1%2B2'` → `3` のケースを足す
 
 `calc_handler の式 parser`の小さなTODOs
-- [ ] `struct calc_expr { long lhs; char op; long rhs; }` を定義する
-- [ ] `find_operator(str_slice s, size_t* pos)` を実装する
+- [x] `struct calc_expr { long lhs; char op; long rhs; }` を定義する
+- [x] `find_operator(str_slice s, size_t* pos)` を実装する
     - 先頭1文字を飛ばして `+ - * /` を探す（先頭は lhs の符号）
     - 見つからなければ -1
     - テスト: `1+2`→1，`-1+2`→2，`1`→-1，`+`→-1，`1+2+3`→1（最初のもの）

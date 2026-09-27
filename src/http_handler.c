@@ -42,6 +42,26 @@ char* CALC_FIXED_RESPONSE = "HTTP/1.1 200 OK\r\n"
                             "\r\n"
                             "calclated";
 
+struct calc_expr {
+    long lhs;
+    char op;
+    long rhs;
+};
+
+int find_operator(struct str_slice s, size_t* pos) {
+    // `i` starts from 1, because it maybe lhs's sign when i=0
+    for (int i = 1; i < s.len; i++) {
+        if (s.ptr[i] == '+' ||
+            s.ptr[i] == '-' ||
+            s.ptr[i] == '*' ||
+            s.ptr[i] == '/') {
+            *pos=i;
+            return 0;
+        }
+    }
+    return -1;
+}
+
 ssize_t calc_handler(int socket, struct http_request req) {
     if (req.param_count == 0) {
         return bad_request(socket);
