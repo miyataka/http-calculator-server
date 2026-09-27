@@ -62,6 +62,33 @@ int find_operator(struct str_slice s, size_t* pos) {
     return -1;
 }
 
+int parse_calc_expr(struct str_slice s, struct calc_expr* out) {
+    size_t pos_op;
+    struct str_slice ss = strip(s);
+    if (find_operator(ss, &pos_op) == -1) {
+        return -1;
+    }
+
+    struct str_slice l = { .ptr = ss.ptr,          .len = pos_op };
+    struct str_slice r = { .ptr = ss.ptr+pos_op+1, .len = ss.len - pos_op - 1 };
+
+    long lhs, rhs;
+    if (slice_to_long(strip(l), &lhs) == -1) {
+        return -1;
+    }
+    if (slice_to_long(strip(r), &rhs) == -1) {
+        return -1;
+    }
+
+    struct calc_expr ce = {
+        .lhs = lhs,
+        .op = ss.ptr[pos_op],
+        .rhs = rhs,
+    };
+    *out = ce;
+    return 0;
+}
+
 ssize_t calc_handler(int socket, struct http_request req) {
     if (req.param_count == 0) {
         return bad_request(socket);

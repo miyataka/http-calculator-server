@@ -74,3 +74,7 @@ int slice_to_size_t(struct str_slice s, size_t* out);
 int slice_eq(struct str_slice s, const char* str);
 struct http_query_param* get_query_param(struct http_request* req, char* name);
 struct http_response create_http_response(int status_code);
+struct str_slice strip(struct str_slice slice);
+int slice_to_long(struct str_slice s, long int* out);
+
+int find_operator(struct str_slice s, size_t* pos);
