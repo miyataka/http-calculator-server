@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <limits.h>
 
 #include "http.h"
 #include "tcp_server.h"
@@ -86,6 +87,40 @@ int parse_calc_expr(struct str_slice s, struct calc_expr* out) {
         .rhs = rhs,
     };
     *out = ce;
+    return 0;
+}
+
+int eval_calc_expr(const struct calc_expr* e, long* out) {
+    long r = 0;
+    switch (e->op) {
+        case '+':
+            if (__builtin_add_overflow(e->lhs, e->rhs, &r)) {
+                return -1;
+            }
+            break;
+        case '-':
+            if (__builtin_sub_overflow(e->lhs, e->rhs, &r)) {
+                return -1;
+            }
+            break;
+        case '*':
+            if (__builtin_mul_overflow(e->lhs, e->rhs, &r)) {
+                return -1;
+            }
+            break;
+        case '/':
+            if (e->rhs == 0) {
+                return -1;
+            }
+            if (e->lhs == LONG_MIN && e->rhs == -1) {
+                return -1;
+            }
+            r = e->lhs / e->rhs;
+            break;
+        default:
+            return -1;
+    }
+    *out = r;
     return 0;
 }
 
