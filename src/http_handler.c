@@ -5,6 +5,7 @@
 
 #include "http.h"
 #include "tcp_server.h"
+#include "http_handler.h"
 
 char* NOT_FOUND_RESPONSE = "HTTP/1.1 404 Not Found\r\n"
                             "Content-Length: 9\r\n"
@@ -42,12 +43,6 @@ char* CALC_FIXED_RESPONSE = "HTTP/1.1 200 OK\r\n"
                             "Connection: close\r\n"
                             "\r\n"
                             "calclated";
-
-struct calc_expr {
-    long lhs;
-    char op;
-    long rhs;
-};
 
 int find_operator(struct str_slice s, size_t* pos) {
     // `i` starts from 1, because it maybe lhs's sign when i=0

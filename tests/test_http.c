@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "../src/http.h"
+#include "../src/http_handler.h"
 
 // http.h に公開されていない内部ヘルパーも直接テストする
 struct str_slice strip(struct str_slice slice);
@@ -18,14 +19,6 @@ char* findstr(char* buf, size_t len, char* str);
 int slice_to_long(struct str_slice s, long* out);
 int hex_value(char c);
 int percent_decode(const char* src, size_t len, char* dst, size_t cap, size_t* out_len);
-
-// calc_expr は http_handler.c 内で定義されているので，同じ定義をここに置く
-struct calc_expr {
-    long lhs;
-    char op;
-    long rhs;
-};
-int eval_calc_expr(const struct calc_expr* e, long* out);
 
 // ---- helpers --------------------------------------------------------------
 // slice_eq は http.h の公開関数を使う
