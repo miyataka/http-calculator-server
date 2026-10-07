@@ -19,6 +19,14 @@ int slice_to_long(struct str_slice s, long* out);
 int hex_value(char c);
 int percent_decode(const char* src, size_t len, char* dst, size_t cap, size_t* out_len);
 
+// calc_expr は http_handler.c 内で定義されているので，同じ定義をここに置く
+struct calc_expr {
+    long lhs;
+    char op;
+    long rhs;
+};
+int eval_calc_expr(const struct calc_expr* e, long* out);
+
 // ---- helpers --------------------------------------------------------------
 // slice_eq は http.h の公開関数を使う
 
@@ -964,6 +972,70 @@ static void test_findstr_empty_pattern(void) {
     assert(findstr(buf, sizeof buf - 1, "") == NULL);
 }
 
+// ---- eval_calc_expr -------------------------------------------------------
+
+static void test_eval_add(void) {
+    long r;
+    assert(eval_calc_expr(&(struct calc_expr){1, '+', 2}, &r) == 0);
+    assert(r == 3);
+}
+
+static void test_eval_sub(void) {
+    long r;
+    assert(eval_calc_expr(&(struct calc_expr){10, '-', 3}, &r) == 0);
+    assert(r == 7);
+}
+
+static void test_eval_mul(void) {
+    long r;
+    assert(eval_calc_expr(&(struct calc_expr){4, '*', 5}, &r) == 0);
+    assert(r == 20);
+}
+
+static void test_eval_div(void) {
+    long r;
+    assert(eval_calc_expr(&(struct calc_expr){9, '/', 3}, &r) == 0);
+    assert(r == 3);
+}
+
+static void test_eval_div_truncates_toward_zero(void) {
+    long r;
+    assert(eval_calc_expr(&(struct calc_expr){7, '/', 2}, &r) == 0);
+    assert(r == 3);
+    assert(eval_calc_expr(&(struct calc_expr){-7, '/', 2}, &r) == 0);
+    assert(r == -3);
+}
+
+static void test_eval_add_overflow_fails(void) {
+    long r;
+    assert(eval_calc_expr(&(struct calc_expr){LONG_MAX, '+', 1}, &r) == -1);
+}
+
+static void test_eval_sub_overflow_fails(void) {
+    long r;
+    assert(eval_calc_expr(&(struct calc_expr){LONG_MIN, '-', 1}, &r) == -1);
+}
+
+static void test_eval_mul_overflow_fails(void) {
+    long r;
+    assert(eval_calc_expr(&(struct calc_expr){LONG_MAX, '*', 2}, &r) == -1);
+}
+
+static void test_eval_div_by_zero_fails(void) {
+    long r;
+    assert(eval_calc_expr(&(struct calc_expr){1, '/', 0}, &r) == -1);
+}
+
+static void test_eval_div_min_by_minus_one_fails(void) {
+    long r;
+    assert(eval_calc_expr(&(struct calc_expr){LONG_MIN, '/', -1}, &r) == -1);
+}
+
+static void test_eval_unknown_op_fails(void) {
+    long r;
+    assert(eval_calc_expr(&(struct calc_expr){1, '%', 2}, &r) == -1);
+}
+
 // ---- main -----------------------------------------------------------------
 
 int main(void) {
@@ -1110,6 +1182,19 @@ int main(void) {
     RUN(test_findstr_bounded_by_len);
     RUN(test_findstr_not_found);
     RUN(test_findstr_empty_pattern);
+
+    printf("eval_calc_expr\n");
+    RUN(test_eval_add);
+    RUN(test_eval_sub);
+    RUN(test_eval_mul);
+    RUN(test_eval_div);
+    RUN(test_eval_div_truncates_toward_zero);
+    RUN(test_eval_add_overflow_fails);
+    RUN(test_eval_sub_overflow_fails);
+    RUN(test_eval_mul_overflow_fails);
+    RUN(test_eval_div_by_zero_fails);
+    RUN(test_eval_div_min_by_minus_one_fails);
+    RUN(test_eval_unknown_op_fails);
 
     printf("all tests passed\n");
     return 0;
