@@ -69,7 +69,7 @@
     - テスト: `1+2`，`10-3`，`4*5`，`9/3`，`-1+2`，`1+-2`，`1++2`→3，
       ` 1 + 2 `→3（両端と演算子周りの空白），`1 2`→-1（演算子なし），
       `1+`→-1，`+2`→-1，`1`→-1，`a+b`→-1，`1+2+3`→-1（rhs が `2+3`）
-- [ ] `eval_calc_expr(const struct calc_expr* e, long* out)` を実装する
+- [x] `eval_calc_expr(const struct calc_expr* e, long* out)` を実装する
     - `+ - *` は `__builtin_add_overflow` / `__builtin_sub_overflow` / `__builtin_mul_overflow`
     - `/` は `rhs == 0` と `lhs == LONG_MIN && rhs == -1` を -1
     - テスト: 各演算1件，`LONG_MAX + 1`→-1，`LONG_MIN - 1`→-1，`LONG_MAX * 2`→-1，
