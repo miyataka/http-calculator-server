@@ -2,6 +2,35 @@
 
 記載順は日付の降順
 
+# 20261007
+
+大きなTODOs
+- [ ] response応答を関数化
+- [ ] POSTに対応する
+    - request bodyを読めるようにする
+- [ ] keep-alive対応をいれる
+
+`calc_handler の式 parser`の小さなTODOs
+- [ ] `eval_calc_expr(const struct calc_expr* e, long* out)` を実装する
+    - `+ - *` は `__builtin_add_overflow` / `__builtin_sub_overflow` / `__builtin_mul_overflow`
+    - `/` は `rhs == 0` と `lhs == LONG_MIN && rhs == -1` を -1
+    - テスト: 各演算1件，`LONG_MAX + 1`→-1，`LONG_MIN - 1`→-1，`LONG_MAX * 2`→-1，
+      `1/0`→-1，`LONG_MIN / -1`→-1，`7/2`→3，`-7/2`→-3
+- [ ] `send_response(fd, status, body, body_len)` を http_handler に実装する
+    - status line とヘッダーを `snprintf` で組み，`Content-Length` は `body_len` から
+    - 既存の固定レスポンス4つを置き換える（`response応答を関数化` の項目）
+    - テスト: test.sh の既存10件が通ること
+- [ ] `calc_handler` を繋ぐ
+    - `get_query_param(req, "q")` が NULL → 400
+    - `parse_calc_expr` が -1 → 400
+    - `eval_calc_expr` が -1 → 400
+    - 結果を `snprintf("%ld")` で body にして 200
+- [ ] test.sh の期待値を差し替える
+    - `q=1%2B2`→`3`，`q=10-3`→`7`，`q=4*5`→`20`，`q=9/3`→`3`，`q=1%2B2` with spaces（`q=1+%2B+2` → `1 + 2`）→`3`
+    - `q=1/0`→400，`q=abc`→400，`q` なし→400，`q=1+2`（`1 2` になる）→400
+
+
+
 # 20260927
 
 大きなTODOs
