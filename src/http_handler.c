@@ -14,9 +14,10 @@ char* NOT_FOUND_RESPONSE = "HTTP/1.1 404 Not Found\r\n"
                             "Not Found";
 
 ssize_t not_found(int socket) {
-    ssize_t sum_sent = send_n(socket, NOT_FOUND_RESPONSE, strlen(NOT_FOUND_RESPONSE));
+    char* content = "Not Found";
+    ssize_t sum_sent = send_response(socket, HTTP_STATUS_NOT_FOUND, content, strlen(content));
     if (sum_sent == -1) {
-        perror("send_n");
+        perror("send_response");
         return -1;
     }
     return sum_sent;
@@ -30,9 +31,10 @@ char* BAD_REQUEST_RESPONSE = "HTTP/1.1 400 Bad Request\r\n"
 
 
 ssize_t bad_request(int socket) {
-    ssize_t sum_sent = send_n(socket, BAD_REQUEST_RESPONSE, strlen(BAD_REQUEST_RESPONSE));
+    char* content = "Bad Request";
+    ssize_t sum_sent = send_response(socket, HTTP_STATUS_BAD_REQUEST, content, strlen(content));
     if (sum_sent == -1) {
-        perror("send_n");
+        perror("send_response");
         return -1;
     }
     return sum_sent;
