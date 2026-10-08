@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
 #include "../src/http.h"
 #include "../src/http_handler.h"
@@ -1029,6 +1031,86 @@ static void test_eval_unknown_op_fails(void) {
     assert(eval_calc_expr(&(struct calc_expr){1, '%', 2}, &r) == -1);
 }
 
+// ---- http_status_reason ---------------------------------------------------
+
+static void test_status_reason_known(void) {
+    assert(strcmp(http_status_reason(HTTP_STATUS_OK), "OK") == 0);
+    assert(strcmp(http_status_reason(HTTP_STATUS_BAD_REQUEST), "Bad Request") == 0);
+    assert(strcmp(http_status_reason(HTTP_STATUS_NOT_FOUND), "Not Found") == 0);
+}
+
+static void test_status_reason_unknown(void) {
+    assert(strcmp(http_status_reason((enum http_status_code)999), "Unknown") == 0);
+}
+
+// ---- send_response --------------------------------------------------------
+
+// socketpair の片側に send_response で書き，もう片側から EOF まで読む
+static ssize_t capture_response(enum http_status_code status, char* body, size_t body_len,
+                                char* out, size_t cap) {
+    int sv[2];
+    assert(socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == 0);
+    ssize_t sent = send_response(sv[0], status, body, body_len);
+    close(sv[0]);
+
+    size_t total = 0;
+    ssize_t n;
+    while ((n = read(sv[1], out + total, cap - 1 - total)) > 0) {
+        total += (size_t)n;
+    }
+    out[total] = '\0';
+    close(sv[1]);
+    assert(sent == (ssize_t)total);
+    return sent;
+}
+
+static void test_send_response_200_with_body(void) {
+    char out[512];
+    char body[] = "hello";
+    capture_response(HTTP_STATUS_OK, body, 5, out, sizeof out);
+    assert(strcmp(out,
+                  "HTTP/1.1 200 OK\r\n"
+                  "Content-Length: 5\r\n"
+                  "Connection: close\r\n"
+                  "\r\n"
+                  "hello") == 0);
+}
+
+static void test_send_response_404(void) {
+    char out[512];
+    char body[] = "Not Found";
+    capture_response(HTTP_STATUS_NOT_FOUND, body, 9, out, sizeof out);
+    assert(strcmp(out,
+                  "HTTP/1.1 404 Not Found\r\n"
+                  "Content-Length: 9\r\n"
+                  "Connection: close\r\n"
+                  "\r\n"
+                  "Not Found") == 0);
+}
+
+static void test_send_response_body_len_is_respected(void) {
+    // body の途中までしか送らない
+    char out[512];
+    char body[] = "12345";
+    capture_response(HTTP_STATUS_OK, body, 3, out, sizeof out);
+    assert(strcmp(out,
+                  "HTTP/1.1 200 OK\r\n"
+                  "Content-Length: 3\r\n"
+                  "Connection: close\r\n"
+                  "\r\n"
+                  "123") == 0);
+}
+
+static void test_send_response_empty_body(void) {
+    char out[512];
+    capture_response(HTTP_STATUS_OK, "", 0, out, sizeof out);
+    assert(strcmp(out,
+                  "HTTP/1.1 200 OK\r\n"
+                  "Content-Length: 0\r\n"
+                  "Connection: close\r\n"
+                  "\r\n") == 0);
+}
+
 // ---- main -----------------------------------------------------------------
 
 int main(void) {
@@ -1188,6 +1270,16 @@ int main(void) {
     RUN(test_eval_div_by_zero_fails);
     RUN(test_eval_div_min_by_minus_one_fails);
     RUN(test_eval_unknown_op_fails);
+
+    printf("http_status_reason\n");
+    RUN(test_status_reason_known);
+    RUN(test_status_reason_unknown);
+
+    printf("send_response\n");
+    RUN(test_send_response_empty_body);
+    RUN(test_send_response_200_with_body);
+    RUN(test_send_response_404);
+    RUN(test_send_response_body_len_is_respected);
 
     printf("all tests passed\n");
     return 0;
