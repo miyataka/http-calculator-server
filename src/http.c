@@ -11,6 +11,29 @@
 #include "tcp_server.h"
 #include "http.h"
 
+ssize_t send_response(int fd, enum http_status_code status, char* body, size_t body_len) {
+    char head[256];
+    int n = snprintf(head, sizeof head,
+            "HTTP/1.1 %d %s\r\n"
+            "Content-Length: %zu\r\n"
+            "Connection: close\r\n"
+            "\r\n",
+            status, http_status_reason(status),
+            body_len);
+    if (n < 0 || (size_t)n >= sizeof head) {
+        return -1;
+    }
+    ssize_t head_sent = send_n(fd, head, n);
+    if (head_sent == -1) {
+        return -1;
+    }
+    ssize_t body_sent = send_n(fd, body, body_len);
+    if (body_sent == -1) {
+        return -1;
+    }
+    return head_sent + body_sent;
+}
+
 char* FIXED_RESPONSE = "HTTP/1.1 200 OK\r\n"
                        "Content-Length: 5\r\n"
                        "Connection: close\r\n"
@@ -18,6 +41,7 @@ char* FIXED_RESPONSE = "HTTP/1.1 200 OK\r\n"
                        "hello";
 
 char* END_OF_HEADER = "\r\n\r\n";
+
 
 ssize_t recv_http_header(int socket, char* buffer, size_t buffer_size) {
     ssize_t sum_received = 0;
@@ -42,9 +66,10 @@ ssize_t recv_http_header(int socket, char* buffer, size_t buffer_size) {
 }
 
 ssize_t response_fixed(int client_fd) {
-    ssize_t sum_sent = send_n(client_fd, FIXED_RESPONSE, strlen(FIXED_RESPONSE));
+    char* content = "hello";
+    ssize_t sum_sent = send_response(client_fd, HTTP_STATUS_OK, content, strlen(content));
     if (sum_sent == -1) {
-        perror("send_n");
+        perror("send_response");
         return -1;
     }
     return sum_sent;
@@ -443,27 +468,4 @@ const char* http_status_reason(enum http_status_code status) {
         case HTTP_STATUS_NOT_FOUND: return "Not Found";
     }
     return "Unknown";
-}
-
-ssize_t send_response(int fd, enum http_status_code status, char* body, size_t body_len) {
-    char head[256];
-    int n = snprintf(head, sizeof head,
-            "HTTP/1.1 %d %s\r\n"
-            "Content-Length: %zu\r\n"
-            "Connection: close\r\n"
-            "\r\n",
-            status, http_status_reason(status),
-            body_len);
-    if (n < 0 || (size_t)n >= sizeof head) {
-        return -1;
-    }
-    ssize_t head_sent = send_n(fd, head, n);
-    if (head_sent == -1) {
-        return -1;
-    }
-    ssize_t body_sent = send_n(fd, body, body_len);
-    if (body_sent == -1) {
-        return -1;
-    }
-    return head_sent + body_sent;
 }
