@@ -435,3 +435,35 @@ struct http_response create_http_response(int status_code) {
         .header_count = 0,
     };
 }
+
+const char* http_status_reason(enum http_status_code status) {
+    switch (status) {
+        case HTTP_STATUS_OK: return "OK";
+        case HTTP_STATUS_BAD_REQUEST: return "Bad Request";
+        case HTTP_STATUS_NOT_FOUND: return "Not Found";
+    }
+    return "Unknown";
+}
+
+ssize_t send_response(int fd, enum http_status_code status, char* body, size_t body_len) {
+    char head[256];
+    int n = snprintf(head, sizeof head,
+            "HTTP/1.1 %d %s\r\n"
+            "Content-Length: %zu\r\n"
+            "Connection: close\r\n"
+            "\r\n",
+            status, http_status_reason(status),
+            body_len);
+    if (n < 0 || (size_t)n >= sizeof head) {
+        return -1;
+    }
+    ssize_t head_sent = send_n(fd, head, n);
+    if (head_sent == -1) {
+        return -1;
+    }
+    ssize_t body_sent = send_n(fd, body, body_len);
+    if (body_sent == -1) {
+        return -1;
+    }
+    return head_sent + body_sent;
+}

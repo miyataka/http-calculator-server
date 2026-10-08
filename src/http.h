@@ -77,4 +77,7 @@ struct http_response create_http_response(int status_code);
 struct str_slice strip(struct str_slice slice);
 int slice_to_long(struct str_slice s, long int* out);
 
+const char* http_status_reason(enum http_status_code status);
+ssize_t send_response(int fd, enum http_status_code status, char* body, size_t body_len);
+
 int find_operator(struct str_slice s, size_t* pos);
