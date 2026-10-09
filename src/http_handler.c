@@ -7,12 +7,6 @@
 #include "tcp_server.h"
 #include "http_handler.h"
 
-char* NOT_FOUND_RESPONSE = "HTTP/1.1 404 Not Found\r\n"
-                            "Content-Length: 9\r\n"
-                            "Connection: close\r\n"
-                            "\r\n"
-                            "Not Found";
-
 ssize_t not_found(int socket) {
     char* content = "Not Found";
     ssize_t sum_sent = send_response(socket, HTTP_STATUS_NOT_FOUND, content, strlen(content));
@@ -23,13 +17,6 @@ ssize_t not_found(int socket) {
     return sum_sent;
 }
 
-char* BAD_REQUEST_RESPONSE = "HTTP/1.1 400 Bad Request\r\n"
-                            "Content-Length: 11\r\n"
-                            "Connection: close\r\n"
-                            "\r\n"
-                            "Bad Request";
-
-
 ssize_t bad_request(int socket) {
     char* content = "Bad Request";
     ssize_t sum_sent = send_response(socket, HTTP_STATUS_BAD_REQUEST, content, strlen(content));
@@ -39,12 +26,6 @@ ssize_t bad_request(int socket) {
     }
     return sum_sent;
 }
-
-char* CALC_FIXED_RESPONSE = "HTTP/1.1 200 OK\r\n"
-                            "Content-Length: 9\r\n"
-                            "Connection: close\r\n"
-                            "\r\n"
-                            "calclated";
 
 int find_operator(struct str_slice s, size_t* pos) {
     // `i` starts from 1, because it maybe lhs's sign when i=0
