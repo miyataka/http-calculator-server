@@ -110,15 +110,24 @@ ssize_t calc_handler(int socket, struct http_request req) {
     if (q_param == NULL) {
         return bad_request(socket);
     }
-    printf("q: %.*s\n", (int)q_param->value.len, q_param->value.ptr);
+    struct calc_expr ce;
+    if (parse_calc_expr(q_param->value, &ce) == -1) {
+        return bad_request(socket);
+    }
 
-    struct http_response res = create_http_response(200);
+    long answer;
+    if (eval_calc_expr(&ce, &answer) == -1) {
+        return bad_request(socket);
+    }
 
-    char content[128] = "calculated"; // TODO
+    char content[128];
+    if (snprintf(content, sizeof(content), "%ld", answer) < 0) {
+        return bad_request(socket);
+    }
 
     ssize_t sum_sent = send_response(socket, HTTP_STATUS_OK, content, strlen(content));
     if (sum_sent == -1) {
-        perror("send_n");
+        perror("send_response");
         return -1;
     }
     return sum_sent;
