@@ -74,7 +74,7 @@
     - `/` は `rhs == 0` と `lhs == LONG_MIN && rhs == -1` を -1
     - テスト: 各演算1件，`LONG_MAX + 1`→-1，`LONG_MIN - 1`→-1，`LONG_MAX * 2`→-1，
       `1/0`→-1，`LONG_MIN / -1`→-1，`7/2`→3，`-7/2`→-3
-- [ ] `send_response(fd, status, body, body_len)` を http_handler に実装する
+- [x] `send_response(fd, status, body, body_len)` を http_handler に実装する
     - status line とヘッダーを `snprintf` で組み，`Content-Length` は `body_len` から
     - 既存の固定レスポンス4つを置き換える（`response応答を関数化` の項目）
     - テスト: test.sh の既存10件が通ること
