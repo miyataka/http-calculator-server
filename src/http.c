@@ -34,12 +34,6 @@ ssize_t send_response(int fd, enum http_status_code status, char* body, size_t b
     return head_sent + body_sent;
 }
 
-char* FIXED_RESPONSE = "HTTP/1.1 200 OK\r\n"
-                       "Content-Length: 5\r\n"
-                       "Connection: close\r\n"
-                       "\r\n"
-                       "hello";
-
 char* END_OF_HEADER = "\r\n\r\n";
 
 
