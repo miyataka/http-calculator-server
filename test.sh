@@ -21,6 +21,12 @@ trap cleanup EXIT INT TERM
 # build
 make build
 
+# 別のサーバーがポートを使っていると，そちらをテストしてしまうので止める
+if nc -z "$HOST" "$PORT" 2>/dev/null; then
+  echo "port $PORT is already in use; stop the other server first" >&2
+  exit 1
+fi
+
 # start server
 "$SERVER_BIN" >/dev/null 2>&1 &
 SERVER_PID=$!
@@ -74,15 +80,25 @@ expect_raw() {
 
 echo "routing"
 expect_http "GET / returns fixed body"            200 "hello"      "$BASE/"
-expect_http "GET /calc returns calc body"         200 "calclated"  "$BASE/calc"
 expect_http "GET /nope is 404"                    404 "Not Found"  "$BASE/nope"
 expect_http "GET /calculator does not match /calc" 404 "Not Found"  "$BASE/calculator"
 
-echo "query string"
-# calc の計算ロジックが入るまでは body は固定．入ったら期待値を計算結果に差し替える
-expect_http "GET /calc with query still routes"   200 "calclated"  "$BASE/calc?q=42"
-expect_http "percent-encoded plus is accepted"    200 "calclated"  "$BASE/calc?q=1%2B2"
-expect_http "raw plus (= space) is accepted"      200 "calclated"  "$BASE/calc?q=1+2"
+echo "calc"
+expect_http "percent-encoded plus adds"           200 "3"          "$BASE/calc?q=1%2B2"
+expect_http "minus subtracts"                     200 "7"          "$BASE/calc?q=10-3"
+expect_http "asterisk multiplies"                 200 "20"         "$BASE/calc?q=4*5"
+expect_http "slash divides"                       200 "3"          "$BASE/calc?q=9/3"
+expect_http "spaces around operator are ignored"  200 "3"          "$BASE/calc?q=1+%2B+2"
+expect_http "negative lhs is accepted"            200 "1"          "$BASE/calc?q=-1%2B2"
+expect_http "division truncates toward zero"      200 "-3"         "$BASE/calc?q=-7/2"
+
+echo "calc errors"
+expect_http "missing q is 400"                    400 "Bad Request" "$BASE/calc"
+expect_http "division by zero is 400"             400 "Bad Request" "$BASE/calc?q=1/0"
+expect_http "non-numeric operands are 400"        400 "Bad Request" "$BASE/calc?q=abc"
+expect_http "number without operator is 400"      400 "Bad Request" "$BASE/calc?q=42"
+expect_http "raw plus (= space) is 400"           400 "Bad Request" "$BASE/calc?q=1+2"
+expect_http "overflow is 400"                     400 "Bad Request" "$BASE/calc?q=9223372036854775807%2B1"
 expect_http "invalid percent escape is 400"       400 "Bad Request" "$BASE/calc?q=%zz"
 
 echo "malformed request"
