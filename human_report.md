@@ -51,7 +51,7 @@
 - [ ] POST /calc で body を読んで応答する
 
 `query string を parse する`の小さなTODOs
-- [ ] `calc_handler` で `q` を取り出して計算し，結果を body に入れて返す
+- [x] `calc_handler` で `q` を取り出して計算し，結果を body に入れて返す
     - param 不足・数値化失敗・式として未成立・ゼロ除算は 400
     - body は `snprintf` で組み立て，Content-Length も実長から計算する
     - test.sh に `curl 'localhost:8080/calc?q=1%2B2'` → `3` のケースを足す
@@ -78,12 +78,12 @@
     - status line とヘッダーを `snprintf` で組み，`Content-Length` は `body_len` から
     - 既存の固定レスポンス4つを置き換える（`response応答を関数化` の項目）
     - テスト: test.sh の既存10件が通ること
-- [ ] `calc_handler` を繋ぐ
+- [x] `calc_handler` を繋ぐ
     - `get_query_param(req, "q")` が NULL → 400
     - `parse_calc_expr` が -1 → 400
     - `eval_calc_expr` が -1 → 400
     - 結果を `snprintf("%ld")` で body にして 200
-- [ ] test.sh の期待値を差し替える
+- [x] test.sh の期待値を差し替える
     - `q=1%2B2`→`3`，`q=10-3`→`7`，`q=4*5`→`20`，`q=9/3`→`3`，`q=1%2B2` with spaces（`q=1+%2B+2` → `1 + 2`）→`3`
     - `q=1/0`→400，`q=abc`→400，`q` なし→400，`q=1+2`（`1 2` になる）→400
 
