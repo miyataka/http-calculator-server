@@ -114,7 +114,9 @@ ssize_t calc_handler(int socket, struct http_request req) {
 
     struct http_response res = create_http_response(200);
 
-    ssize_t sum_sent = send_n(socket, q_param->value.ptr, q_param->value.len);
+    char content[128] = "calculated"; // TODO
+
+    ssize_t sum_sent = send_response(socket, HTTP_STATUS_OK, content, strlen(content));
     if (sum_sent == -1) {
         perror("send_n");
         return -1;
