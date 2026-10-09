@@ -26,13 +26,6 @@
 - [ ] main.c の recv / parse 呼び出しを `receive_http_request` 1回に置き換える
 - [ ] POST /calc で body を読んで応答する
 
-`query string を parse する`の小さなTODOs
-- [x] `calc_handler` で `q` を取り出して計算し，結果を body に入れて返す
-    - param 不足・数値化失敗・式として未成立・ゼロ除算は 400
-    - body は `snprintf` で組み立て，Content-Length も実長から計算する
-    - test.sh に `curl 'localhost:8080/calc?q=1%2B2'` → `3` のケースを足す
-
-
 `calc_handler の式 parser`の小さなTODOs
 - [x] `eval_calc_expr(const struct calc_expr* e, long* out)` を実装する
     - `+ - *` は `__builtin_add_overflow` / `__builtin_sub_overflow` / `__builtin_mul_overflow`
