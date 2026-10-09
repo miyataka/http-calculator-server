@@ -50,7 +50,6 @@ shell: image
 
 docker-build: image
 	docker run --rm \
-		-it \
 		-v $(PWD):${PWD} \
 		-w ${PWD} \
 		http-calclator-server \
@@ -66,7 +65,6 @@ docker-run: image
 
 docker-compdb: image
 	docker run --rm \
-		-it \
 		-v $(PWD):${PWD} \
 		-w ${PWD} \
 		http-calclator-server \
