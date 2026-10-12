@@ -5,19 +5,19 @@
 # 20261011
 
 大きなTODOs
-- [ ] POSTに対応する
+- [x] POSTに対応する
     - request bodyを読めるようにする
 - [ ] keep-alive対応をいれる
 
 
 `http headerをparseする`をやるための小さなTODOs
-- [ ] `recv_http_body(fd, buf, size, already_have, content_length)` を実装する
+- [x] `recv_http_body(fd, buf, size, already_have, content_length)` を実装する
     - head と一緒に届いた body の余りを差し引き、不足分だけ recv
-- [ ] `receive_http_request(fd, buf, size, req)` を実装する
+- [x] `receive_http_request(fd, buf, size, req)` を実装する
     - recv_http_head → parse_http_request_head → (Content-Length があれば) recv_http_body
     - `req->body` を埋める
-- [ ] main.c の recv / parse 呼び出しを `receive_http_request` 1回に置き換える
-- [ ] POST /calc で body を読んで応答する
+- [x] main.c の recv / parse 呼び出しを `receive_http_request` 1回に置き換える
+- [x] POST /calc で body を読んで応答する
 
 # 20261007
 
@@ -160,12 +160,12 @@
 
 
 `http headerをparseする`をやるための小さなTODOs
-- [x] `recv_http_body(fd, buf, size, already_have, content_length)` を実装する
+- [ ] `recv_http_body(fd, buf, size, already_have, content_length)` を実装する
     - head と一緒に届いた body の余りを差し引き、不足分だけ recv
-- [x] `receive_http_request(fd, buf, size, req)` を実装する
+- [ ] `receive_http_request(fd, buf, size, req)` を実装する
     - recv_http_head → parse_http_request_head → (Content-Length があれば) recv_http_body
     - `req->body` を埋める
-- [x] main.c の recv / parse 呼び出しを `receive_http_request` 1回に置き換える
+- [ ] main.c の recv / parse 呼び出しを `receive_http_request` 1回に置き換える
 - [ ] POST /calc で body を読んで応答する
 
 `query string を parse する`の小さなTODOs
