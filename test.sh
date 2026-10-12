@@ -41,12 +41,13 @@ done
 
 failed=0
 
-# expect_http <name> <expected_status> <expected_body> <url>
+# expect_http <name> <expected_status> <expected_body> <url> [curl options...]
 expect_http() {
   local name=$1 want_status=$2 want_body=$3 url=$4
+  shift 4
   local out status body
   # body と status を1回のリクエストで取る．最終行が status
-  out=$(curl -s -o - -w '\n%{http_code}' "$url")
+  out=$(curl -s -o - -w '\n%{http_code}' "$@" "$url")
   status=${out##*$'\n'}
   body=${out%$'\n'*}
 
@@ -100,6 +101,29 @@ expect_http "number without operator is 400"      400 "Bad Request" "$BASE/calc?
 expect_http "raw plus (= space) is 400"           400 "Bad Request" "$BASE/calc?q=1+2"
 expect_http "overflow is 400"                     400 "Bad Request" "$BASE/calc?q=9223372036854775807%2B1"
 expect_http "invalid percent escape is 400"       400 "Bad Request" "$BASE/calc?q=%zz"
+
+# expect_post <name> <expected_status> <expected_body> <path> <form_body>
+# curl --data は Content-Type: application/x-www-form-urlencoded で送る
+expect_post() {
+  expect_http "$1" "$2" "$3" "$BASE$4" --data "$5"
+}
+
+echo "calc via POST body"
+expect_post "form body adds"                      200 "3"          /calc 'q=1%2B2'
+expect_post "form body multiplies"                200 "42"         /calc 'q=6*7'
+expect_post "q followed by other params"          200 "42"         /calc 'q=6*7&x=1'
+expect_post "q after other params"                200 "7"          /calc 'x=1&q=10-3'
+
+echo "calc via POST body errors"
+expect_post "body without q is 400"               400 "Bad Request" /calc 'x=1'
+expect_post "q only as name suffix is 400"        400 "Bad Request" /calc 'aq=1-1'
+expect_post "empty q is 400"                      400 "Bad Request" /calc 'q='
+expect_post "division by zero is 400"             400 "Bad Request" /calc 'q=1/0'
+expect_post "invalid percent escape is 400"       400 "Bad Request" /calc 'q=%zz'
+expect_post "POST to unknown path is 404"         404 "Not Found"   /nope 'q=1-1'
+expect_raw  "POST without body is 400"            "HTTP/1.1 400" 'POST /calc HTTP/1.1\r\nHost: x\r\n\r\n'
+# 直前の body なし POST でサーバーが落ちていないこと
+expect_http "server still alive after it"         200 "3"          "$BASE/calc?q=1%2B2"
 
 echo "malformed request"
 expect_raw  "request line without version is 400" "HTTP/1.1 400" 'GET /calc\r\n\r\n'
