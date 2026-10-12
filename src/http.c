@@ -483,7 +483,6 @@ ssize_t recv_http_body(int socket, char* buf, size_t size, size_t already_have, 
         if (num_received == 0) break;
         sum_received += num_received;
         buf[sum_received] = '\0';
-        printf("%d byte received. total %d bytes\n", (int)num_received, (int)sum_received);
     }
 
     if (sum_received < content_length) {
