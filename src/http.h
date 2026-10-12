@@ -83,6 +83,7 @@ const char* http_status_reason(enum http_status_code status);
 ssize_t send_response(int fd, enum http_status_code status, char* body, size_t body_len);
 
 int find_operator(struct str_slice s, size_t* pos);
+int parse_query(struct http_request* req);
 
 ssize_t recv_http_body(int socket, char* buffer, size_t buffer_size, size_t already_have, size_t content_length);
 ssize_t recv_http_request(int socket, char* buffer, size_t buffer_size, struct http_request* req);

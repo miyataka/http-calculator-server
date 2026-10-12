@@ -103,36 +103,37 @@ int eval_calc_expr(const struct calc_expr* e, long* out) {
 }
 
 ssize_t calc_handler(int socket, struct http_request req) {
-
-    struct str_slice q_val;
+    struct http_query_param* q_param = NULL;
 
     switch (req.method) {
         case HTTP_METHOD_GET:
             if (req.param_count == 0) {
                 return bad_request(socket);
             }
-            struct http_query_param* q_param = get_query_param(&req, "q");
+            q_param = get_query_param(&req, "q");
             if (q_param == NULL) {
                 return bad_request(socket);
             }
-            q_val = q_param->value;
             break;
         case HTTP_METHOD_POST:
             if (req.body.ptr == NULL || req.body.len == 0) {
                 return bad_request(socket);
             }
-            char* q_index = NULL;
-            q_index = strstr(req.body.ptr, "q=");
-            if (q_index == NULL) {
+            req.query = req.body; // `Content-Type: application/x-www-form-urlencoded` 相当を前提としてしまっている
+            if (parse_query(&req) == -1) {
                 return bad_request(socket);
             }
-            q_val = (struct str_slice){ .ptr = q_index+2, .len = req.body.len-(q_index-req.body.ptr)-2 };
+            q_param = get_query_param(&req, "q");
+            if (q_param == NULL) {
+                return bad_request(socket);
+            }
             break;
         default:
             return bad_request(socket);
     }
+
     struct calc_expr ce;
-    if (parse_calc_expr(q_val, &ce) == -1) {
+    if (parse_calc_expr(q_param->value, &ce) == -1) {
         return bad_request(socket);
     }
 
