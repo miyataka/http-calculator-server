@@ -463,3 +463,33 @@ const char* http_status_reason(enum http_status_code status) {
     }
     return "Unknown";
 }
+
+ssize_t recv_http_body(int socket, char* buf, size_t size, size_t already_have, size_t content_length) {
+    size_t sum_received = already_have;
+
+    if (size <= content_length) { // buf must contain `\0` too
+        return -1; // buffer is too small
+    }
+
+    while(sum_received < content_length) {
+        ssize_t num_received = recv(socket,
+                                    buf + sum_received,
+                                    content_length - sum_received,
+                                    0);
+        if (num_received == -1) {
+            perror("recv error");
+            return -1;
+        }
+        if (num_received == 0) break;
+        sum_received += num_received;
+        buf[sum_received] = '\0';
+        printf("%d byte received. total %d bytes\n", (int)num_received, (int)sum_received);
+    }
+
+    if (sum_received < content_length) {
+        return -1;
+    }
+
+    buf[content_length] = '\0';
+    return content_length;
+}

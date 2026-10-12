@@ -1111,6 +1111,85 @@ static void test_send_response_empty_body(void) {
                   "\r\n") == 0);
 }
 
+// ---- recv_http_body -------------------------------------------------------
+
+// socketpair の片側に wire を書いて閉じ，もう片側から recv_http_body で読む．
+// leftover はヘッダと一緒に届いていた body の続きとして buf の先頭に置く
+static ssize_t feed_body(char* buf, size_t size, const char* leftover,
+                         const char* wire, size_t content_length) {
+    int sv[2];
+    assert(socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == 0);
+    size_t wire_len = strlen(wire);
+    assert(write(sv[0], wire, wire_len) == (ssize_t)wire_len);
+    close(sv[0]);  // 送り終わったら EOF
+
+    size_t already_have = strlen(leftover);
+    memcpy(buf, leftover, already_have);
+    ssize_t r = recv_http_body(sv[1], buf, size, already_have, content_length);
+    close(sv[1]);
+    return r;
+}
+
+static void test_recv_body_all_from_socket(void) {
+    char buf[64];
+    assert(feed_body(buf, sizeof buf, "", "hello", 5) == 5);
+    assert(strcmp(buf, "hello") == 0);
+}
+
+static void test_recv_body_partly_with_head(void) {
+    char buf[64];
+    assert(feed_body(buf, sizeof buf, "he", "llo", 5) == 5);
+    assert(strcmp(buf, "hello") == 0);
+}
+
+static void test_recv_body_all_with_head(void) {
+    char buf[64];
+    assert(feed_body(buf, sizeof buf, "hello", "", 5) == 5);
+    assert(strcmp(buf, "hello") == 0);
+}
+
+static void test_recv_body_stops_at_content_length(void) {
+    // Content-Length より後ろは読まない
+    char buf[64];
+    assert(feed_body(buf, sizeof buf, "", "hello world", 5) == 5);
+    assert(strcmp(buf, "hello") == 0);
+}
+
+static void test_recv_body_extra_with_head_is_cut(void) {
+    // ヘッダと一緒に Content-Length より多く届いていても content_length を返す
+    char buf[64];
+    assert(feed_body(buf, sizeof buf, "hello world", "", 5) == 5);
+    assert(strcmp(buf, "hello") == 0);
+}
+
+static void test_recv_body_empty(void) {
+    char buf[64];
+    assert(feed_body(buf, sizeof buf, "", "", 0) == 0);
+    assert(strcmp(buf, "") == 0);
+}
+
+static void test_recv_body_early_eof_fails(void) {
+    char buf[64];
+    assert(feed_body(buf, sizeof buf, "", "he", 5) == -1);
+}
+
+static void test_recv_body_no_room_for_nul_fails(void) {
+    // body がちょうど埋まると '\0' を置けない
+    char buf[5];
+    assert(feed_body(buf, sizeof buf, "", "hello", 5) == -1);
+}
+
+static void test_recv_body_larger_than_buffer_fails(void) {
+    char buf[8];
+    assert(feed_body(buf, sizeof buf, "", "0123456789abcdef", 16) == -1);
+}
+
+static void test_recv_body_fits_with_nul(void) {
+    char buf[6];
+    assert(feed_body(buf, sizeof buf, "", "hello", 5) == 5);
+    assert(strcmp(buf, "hello") == 0);
+}
+
 // ---- main -----------------------------------------------------------------
 
 int main(void) {
@@ -1280,6 +1359,18 @@ int main(void) {
     RUN(test_send_response_200_with_body);
     RUN(test_send_response_404);
     RUN(test_send_response_body_len_is_respected);
+
+    printf("recv_http_body\n");
+    RUN(test_recv_body_all_from_socket);
+    RUN(test_recv_body_partly_with_head);
+    RUN(test_recv_body_all_with_head);
+    RUN(test_recv_body_stops_at_content_length);
+    RUN(test_recv_body_extra_with_head_is_cut);
+    RUN(test_recv_body_empty);
+    RUN(test_recv_body_early_eof_fails);
+    RUN(test_recv_body_no_room_for_nul_fails);
+    RUN(test_recv_body_larger_than_buffer_fails);
+    RUN(test_recv_body_fits_with_nul);
 
     printf("all tests passed\n");
     return 0;
