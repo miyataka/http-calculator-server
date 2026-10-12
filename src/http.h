@@ -56,6 +56,8 @@ struct http_request {
 
     struct http_query_param params[16];
     size_t param_count;
+
+    struct str_slice body;
 };
 
 struct http_response {
@@ -83,3 +85,4 @@ ssize_t send_response(int fd, enum http_status_code status, char* body, size_t b
 int find_operator(struct str_slice s, size_t* pos);
 
 ssize_t recv_http_body(int socket, char* buffer, size_t buffer_size, size_t already_have, size_t content_length);
+ssize_t recv_http_request(int socket, char* buffer, size_t buffer_size, struct http_request* req);

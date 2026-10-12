@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include "../src/http.h"
@@ -1190,6 +1191,100 @@ static void test_recv_body_fits_with_nul(void) {
     assert(strcmp(buf, "hello") == 0);
 }
 
+// ---- recv_http_request ----------------------------------------------------
+
+// socketpair の片側に head を書き，later が空でなければ少し待ってから later を書く．
+// 待つ間に recv_http_request がヘッダを読み終えるので，body が分かれて届く状況になる
+static ssize_t feed_request(char* buf, size_t size, struct http_request* req,
+                            const char* head, const char* later) {
+    int sv[2];
+    assert(socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == 0);
+    pid_t pid = fork();
+    assert(pid != -1);
+    if (pid == 0) {
+        close(sv[1]);
+        write(sv[0], head, strlen(head));
+        if (later[0] != '\0') {
+            usleep(100 * 1000);
+            write(sv[0], later, strlen(later));
+        }
+        close(sv[0]);
+        _exit(0);
+    }
+    close(sv[0]);
+
+    memset(req, 0, sizeof *req);
+    ssize_t r = recv_http_request(sv[1], buf, size, req);
+    close(sv[1]);
+    waitpid(pid, NULL, 0);
+    return r;
+}
+
+static void test_recv_request_get_without_body(void) {
+    char buf[1024]; struct http_request req;
+    assert(feed_request(buf, sizeof buf, &req,
+                        "GET /calc?q=1%2B2 HTTP/1.1\r\nHost: x\r\n\r\n", "") == 0);
+    assert(req.method == HTTP_METHOD_GET);
+    assert(slice_eq(req.path, "/calc"));
+    assert(req.body.ptr == NULL);
+    assert(req.body.len == 0);
+}
+
+static void test_recv_request_post_body_with_head(void) {
+    char buf[1024]; struct http_request req;
+    assert(feed_request(buf, sizeof buf, &req,
+                        "POST /calc HTTP/1.1\r\nContent-Length: 7\r\n\r\nq=1%2B2", "") == 0);
+    assert(req.method == HTTP_METHOD_POST);
+    assert(slice_eq(req.body, "q=1%2B2"));
+}
+
+static void test_recv_request_post_body_arrives_later(void) {
+    char buf[1024]; struct http_request req;
+    assert(feed_request(buf, sizeof buf, &req,
+                        "POST /calc HTTP/1.1\r\nContent-Length: 7\r\n\r\nq=1", "%2B2") == 0);
+    assert(slice_eq(req.body, "q=1%2B2"));
+    // 後から届いた body がヘッダ側を上書きしていない
+    assert(slice_eq(req.path, "/calc"));
+}
+
+static void test_recv_request_post_body_only_later(void) {
+    char buf[1024]; struct http_request req;
+    assert(feed_request(buf, sizeof buf, &req,
+                        "POST /calc HTTP/1.1\r\nContent-Length: 7\r\n\r\n", "q=1%2B2") == 0);
+    assert(slice_eq(req.body, "q=1%2B2"));
+}
+
+static void test_recv_request_content_length_zero(void) {
+    char buf[1024]; struct http_request req;
+    assert(feed_request(buf, sizeof buf, &req,
+                        "POST /calc HTTP/1.1\r\nContent-Length: 0\r\n\r\n", "") == 0);
+    assert(req.body.len == 0);
+}
+
+static void test_recv_request_invalid_content_length_fails(void) {
+    char buf[1024]; struct http_request req;
+    assert(feed_request(buf, sizeof buf, &req,
+                        "POST /calc HTTP/1.1\r\nContent-Length: abc\r\n\r\n", "") == -1);
+}
+
+static void test_recv_request_body_too_large_fails(void) {
+    // ヘッダの後ろに残る容量より Content-Length が大きい
+    char buf[128]; struct http_request req;
+    assert(feed_request(buf, sizeof buf, &req,
+                        "POST /calc HTTP/1.1\r\nContent-Length: 1000\r\n\r\n", "") == -1);
+}
+
+static void test_recv_request_early_eof_fails(void) {
+    char buf[1024]; struct http_request req;
+    assert(feed_request(buf, sizeof buf, &req,
+                        "POST /calc HTTP/1.1\r\nContent-Length: 7\r\n\r\nq=1", "") == -1);
+}
+
+static void test_recv_request_malformed_head_fails(void) {
+    char buf[1024]; struct http_request req;
+    assert(feed_request(buf, sizeof buf, &req, "garbage\r\n\r\n", "") == -1);
+}
+
 // ---- main -----------------------------------------------------------------
 
 int main(void) {
@@ -1371,6 +1466,17 @@ int main(void) {
     RUN(test_recv_body_no_room_for_nul_fails);
     RUN(test_recv_body_larger_than_buffer_fails);
     RUN(test_recv_body_fits_with_nul);
+
+    printf("recv_http_request\n");
+    RUN(test_recv_request_get_without_body);
+    RUN(test_recv_request_post_body_with_head);
+    RUN(test_recv_request_post_body_arrives_later);
+    RUN(test_recv_request_post_body_only_later);
+    RUN(test_recv_request_content_length_zero);
+    RUN(test_recv_request_invalid_content_length_fails);
+    RUN(test_recv_request_body_too_large_fails);
+    RUN(test_recv_request_early_eof_fails);
+    RUN(test_recv_request_malformed_head_fails);
 
     printf("all tests passed\n");
     return 0;

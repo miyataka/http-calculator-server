@@ -492,3 +492,37 @@ ssize_t recv_http_body(int socket, char* buf, size_t size, size_t already_have, 
     buf[content_length] = '\0';
     return content_length;
 }
+
+ssize_t recv_http_request(int socket, char* buf, size_t size, struct http_request* req) {
+    ssize_t recv_bytes = recv_http_header(socket, buf, size);
+    if (recv_bytes == -1) {
+        return -1;
+    }
+
+    int head_len = parse_http_request_head(buf, req);
+    if (head_len == -1) {
+        return -1;
+    }
+
+    struct http_header_field* content_length_field = get_header(req, "Content-Length");
+    if (content_length_field == NULL) {
+        req->body = (struct str_slice){ .ptr = NULL, .len = 0 };
+        return 0;
+    }
+
+    size_t content_length = 0;
+    if (slice_to_size_t(content_length_field->value, &content_length) == -1) {
+        return -1;
+    }
+
+    size_t already_have = recv_bytes - head_len;
+
+    char* body = buf+head_len;
+    recv_bytes = recv_http_body(socket, body, size-head_len, already_have, content_length);
+    if (recv_bytes == -1) {
+        return -1;
+    }
+    req->body = (struct str_slice){ .ptr = body, .len = content_length };
+
+    return 0;
+}
