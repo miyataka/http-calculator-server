@@ -31,15 +31,10 @@ int main() {
         }
 
         // recv loop
-        char buf[1024] = {0};
-        // TODO handle if it received over 1kB
-        // ssize_t sum_received = recv_until_eof(client_fd, buf, sizeof(buf));
-        ssize_t sum_received = recv_http_header(client_fd, buf, sizeof(buf));
-        printf("%d byte\n%s\n", (int)sum_received, buf);
-        struct http_request req = {0};
-        struct str_slice t = {0};
-        req.target = t;
-        if (parse_http_request_head(buf, &req) == -1) {
+        char buf[8192] = {0};
+        // TODO handle if it received over 8kB
+        struct http_request req = {};
+        if (recv_http_request(client_fd, buf, sizeof(buf), &req) == -1) {
             bad_request(client_fd);
             close(client_fd);
             continue;
