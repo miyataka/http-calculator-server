@@ -47,7 +47,7 @@ int main() {
 
         // routing
         ssize_t sum_sent = 0;
-        if (req.method == HTTP_METHOD_GET && slice_eq(req.path, "/calc")) {
+        if ((req.method == HTTP_METHOD_GET || req.method == HTTP_METHOD_POST) && slice_eq(req.path, "/calc")) {
             sum_sent = calc_handler(client_fd, req);
             if (sum_sent == -1) {
                 perror("calc_handler");
