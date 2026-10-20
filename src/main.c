@@ -1,0 +1,78 @@
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <errno.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <string.h>
+
+#include "tcp_server.h"
+#include "http.h"
+#include "http_handler.h"
+
+int main() {
+    int sock = create_tcp_server();
+    if (sock == -1) {
+        printf("create_tcp_server error: %s\n", strerror(errno));
+        return -1;
+    }
+
+    if (listen(sock, 100) == -1) {
+        perror("listen error");
+        return -1;
+    }
+
+    for (;;) {
+        int client_fd = accept(sock, NULL, NULL);
+        if (client_fd == -1) {
+            perror("accept error");
+            return -1;
+        }
+
+        // recv loop
+        char buf[8192] = {0};
+        // TODO handle if it received over 8kB
+        struct http_request req = {};
+        if (recv_http_request(client_fd, buf, sizeof(buf), &req) == -1) {
+            bad_request(client_fd);
+            close(client_fd);
+            continue;
+        }
+
+        printf("http_method: %d\n", req.method);
+        printf("http_target: %p\n", req.target.ptr);
+        printf("http_target_len: %d\n", (int)req.target.len);
+        printf("http_version: %d\n", req.version);
+
+        // routing
+        ssize_t sum_sent = 0;
+        if ((req.method == HTTP_METHOD_GET || req.method == HTTP_METHOD_POST) && slice_eq(req.path, "/calc")) {
+            sum_sent = calc_handler(client_fd, req);
+            if (sum_sent == -1) {
+                perror("calc_handler");
+            }
+        } else if (req.method == HTTP_METHOD_GET && slice_eq(req.path, "/")) {
+            sum_sent = response_fixed(client_fd);
+            if (sum_sent == -1) {
+                perror("response_fixed");
+            }
+        } else {
+            sum_sent = not_found(client_fd);
+            if (sum_sent == -1) {
+                perror("not_found");
+            }
+        }
+
+        if (close(client_fd) == -1) {
+            perror("close error");
+            return -1;
+        }
+    }
+
+    if (close(sock) == -1) {
+        perror("close error");
+        return -1;
+    }
+    return 0;
+}

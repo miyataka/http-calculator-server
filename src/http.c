@@ -1,0 +1,527 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <ctype.h>
+#include <stdlib.h>
+#include <limits.h>
+
+#include "tcp_server.h"
+#include "http.h"
+
+ssize_t send_response(int fd, enum http_status_code status, char* body, size_t body_len) {
+    char head[256];
+    int n = snprintf(head, sizeof head,
+            "HTTP/1.1 %d %s\r\n"
+            "Content-Length: %zu\r\n"
+            "Connection: close\r\n"
+            "\r\n",
+            status, http_status_reason(status),
+            body_len);
+    if (n < 0 || (size_t)n >= sizeof head) {
+        return -1;
+    }
+    ssize_t head_sent = send_n(fd, head, n);
+    if (head_sent == -1) {
+        return -1;
+    }
+    ssize_t body_sent = send_n(fd, body, body_len);
+    if (body_sent == -1) {
+        return -1;
+    }
+    return head_sent + body_sent;
+}
+
+char* END_OF_HEADER = "\r\n\r\n";
+
+
+ssize_t recv_http_header(int socket, char* buffer, size_t buffer_size) {
+    ssize_t sum_received = 0;
+
+    while((size_t)sum_received < buffer_size - 1) {
+        ssize_t num_received = recv(socket,
+                                    buffer + sum_received,
+                                    buffer_size - 1 - sum_received,
+                                    0);
+        if (num_received == -1) {
+            perror("recv error");
+            return -1;
+        }
+        if (num_received == 0) break;
+        sum_received += num_received;
+        buffer[sum_received] = '\0';
+        if (strstr(buffer, END_OF_HEADER) != NULL) break;
+    }
+
+    return sum_received;
+}
+
+ssize_t response_fixed(int client_fd) {
+    char* content = "hello";
+    ssize_t sum_sent = send_response(client_fd, HTTP_STATUS_OK, content, strlen(content));
+    if (sum_sent == -1) {
+        perror("send_response");
+        return -1;
+    }
+    return sum_sent;
+}
+
+char* find_space(char* buf, size_t len) {
+    for (size_t i = 0; i < len; i++) {
+        if (buf[i] == ' ') {
+            return &buf[i];
+        }
+    }
+    return NULL;
+}
+
+
+enum http_method decide_http_method(struct str_slice method) {
+    if (method.len <= 0) return HTTP_METHOD_UNKNOWN;
+
+    switch (method.ptr[0]) {
+        case 'G':
+            return HTTP_METHOD_GET;
+        case 'P':
+            return HTTP_METHOD_POST;
+        default:
+            return HTTP_METHOD_UNKNOWN;
+    }
+}
+
+enum http_version decide_http_version(struct str_slice version) {
+    if (version.len <= 7) return HTTP_VERSION_UNKNOWN;
+
+    switch (version.ptr[5]) {
+        case '0':
+            return HTTP_VERSION_0_9;
+        case '1':
+            switch (version.ptr[7]) {
+                case '0':
+                    return HTTP_VERSION_1_0;
+                case '1':
+                    return HTTP_VERSION_1_1;
+            }
+        default:
+            return HTTP_VERSION_UNKNOWN;
+    }
+}
+
+int parse_request_line(struct http_request* req) {
+    if (req->header_line_count == 0) return -1;
+    struct str_slice request_line = req->header_lines[0];
+
+    const char* start = request_line.ptr;
+    char* end = request_line.ptr + request_line.len;
+
+    char* pos_space = find_space(start, end - start);
+    if (pos_space == NULL) return -1;
+    struct str_slice method = {
+        .ptr = start,
+        .len = pos_space - start,
+    };
+
+    start = pos_space+1;
+    pos_space = find_space(pos_space+1, end - start);
+    if (pos_space == NULL) return -1;
+    struct str_slice target = {
+        .ptr = start,
+        .len = pos_space - start,
+    };
+
+    start = pos_space+1;
+    struct str_slice version = {
+        .ptr = start,
+        .len = end - start,
+    };
+
+    req->method = decide_http_method(method);
+    req->target = target;
+    req->version = decide_http_version(version);
+
+    return 0;
+}
+
+struct str_slice strip(struct str_slice slice) {
+    if (slice.len == 0) return slice;
+
+    const char* start = slice.ptr;
+    const char* end = slice.ptr + slice.len;
+    for (size_t i = 0; i < slice.len; i++) {
+        if (slice.ptr[i] != ' ') {
+            break;
+        }
+        start++;
+    }
+    while (end > start && end[-1] == ' ') end--;
+
+    struct str_slice striped = {
+        .ptr = start,
+        .len = end - start,
+    };
+    return striped;
+}
+
+char* findchr(char* buf, size_t len, char c) {
+    for (size_t i = 0; i < len; i++) {
+        if (buf[i] == c) return &buf[i];
+    }
+    return NULL;
+}
+
+char* findstr(char* buf, size_t len, char* str) {
+    size_t s_len = strlen(str);
+    if (s_len == 0) return NULL;
+
+    for (size_t i = 0; i + s_len <= len ; i++) {
+        if (buf[i] != str[0]) continue;
+
+        for (size_t j = 0; j < s_len; j++) {
+            if (buf[i+j] != str[j]) {
+                break;
+            }
+            if (j == s_len-1) return &buf[i];
+        }
+    }
+    return NULL;
+}
+
+int parse_request_header_field(char* buf, size_t len, struct http_header_field* dst) {
+    char* pos_end = findstr(buf, len, "\r\n");
+    if (pos_end == NULL) {
+        pos_end = buf + len;
+    }
+    char* colon = findchr(buf, pos_end-buf, ':');
+    if (colon == NULL) return -1;
+
+    struct str_slice name = {
+        .ptr = buf,
+        .len = colon - buf,
+    };
+    dst->name = name;
+
+    struct str_slice v = {
+        .ptr = colon + 1,
+        .len = pos_end - colon - 1,
+    };
+    dst->value = strip(v);
+
+    return 0;
+}
+
+
+struct http_header_field* get_header(struct http_request* req, char* name) {
+    size_t len = strlen(name);
+
+    for (int i = 0; i < req->header_count; i++) {
+        if (req->headers[i].name.len != len) continue;
+
+        // tolowerしてから比較する
+        for (int j = 0; j < req->headers[i].name.len; j++) {
+            char h = (char)tolower((unsigned char)req->headers[i].name.ptr[j]);
+            char v = (char)tolower((unsigned char)name[j]);
+            if (h != v) break;
+
+            if (j + 1 == req->headers[i].name.len) {
+                return &req->headers[i];
+            }
+        }
+    }
+    return NULL;
+}
+
+int slice_to_size_t(struct str_slice s, size_t* out) {
+    if (s.len == 0) return -1;
+    size_t v = 0;
+    for (size_t i = 0; i < s.len; i++) {
+        if (!isdigit((unsigned char)s.ptr[i])) return -1;
+        size_t d = s.ptr[i] - '0';
+        if (v > (SIZE_MAX - d) / 10) return -1; // overflow
+        v = v * 10 + d;
+    }
+    *out = v;
+    return 0;
+}
+
+int slice_to_long(struct str_slice s, long int* out) {
+    size_t i = 0;
+    int neg = 0;
+    if (s.len > 0 && (s.ptr[0] == '-' || s.ptr[0] == '+')) {
+        neg = (s.ptr[0] == '-');
+        i++;
+    }
+    if (i >= s.len) return -1; // 空 or 符号のみ
+    long v = 0;
+    for (; i < s.len; i++) {
+        if (!isdigit((unsigned char)s.ptr[i])) return -1;
+        int d = s.ptr[i] - '0';
+        if (v < (LONG_MIN + d) / 10) return -1; // overflow
+        v = v * 10 - d;
+    }
+    if (!neg) {
+        if (v == LONG_MIN) return -1;
+        v = -v;
+    }
+    *out = v;
+    return 0;
+}
+
+int slice_eq(struct str_slice s, const char* str) {
+    size_t n = strlen(str);
+    return s.len == n && memcmp(s.ptr, str, n) == 0;
+}
+
+int hex_value(char c) {
+    if ('0' <= c && c <= '9') return c - '0';
+    if ('a' <= c && c <= 'f') return c - 'a' + 10;
+    if ('A' <= c && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+int percent_decode(const char* src, size_t len, char* dst, size_t cap, size_t* out_len) {
+    size_t r = 0, w = 0;
+    while (r < len) {
+        if (w >= cap) return -1;
+        if (src[r] == '%') {
+            if (r+2 >= len) return -1;
+            int hi = hex_value(src[r+1]);
+            int lo = hex_value(src[r+2]);
+            if (hi == -1 || lo == -1) return -1;
+            dst[w] = (char)(hi * 16 + lo);
+            w++;
+            r += 3;
+        } else if (src[r] == '+') {
+            dst[w] = ' ';
+            w++;
+            r++;
+        } else {
+            dst[w] = src[r];
+            w++;
+            r++;
+        }
+    }
+    *out_len = w;
+    return 0;
+}
+
+int decode_into(struct http_request* req, const char* src, size_t len, struct str_slice* out) {
+    char*  dst = req->decoded + req->decoded_len;
+    size_t cap = sizeof(req->decoded) - req->decoded_len; // left capacity
+    size_t n;
+    if (percent_decode(src, len, dst, cap, &n) == -1) return -1;
+
+    *out = (struct str_slice){ .ptr = dst, .len = n };
+    req->decoded_len += n;
+    return 0;
+}
+
+int parse_query_param(char* buf, size_t len, struct http_query_param* dst, struct http_request* req) {
+    char* c_eq = findchr(buf, len, '=');
+
+    const char* name_src = buf;
+    size_t      name_len = c_eq ? (size_t)(c_eq - buf) : len;
+    const char* val_src  = c_eq ? c_eq + 1 : buf + len;
+    size_t      val_len  = c_eq ? (size_t)(buf + len - c_eq - 1) : 0;
+
+    if (decode_into(req, name_src, name_len, &dst->name)  == -1) return -1;
+    if (decode_into(req, val_src,  val_len,  &dst->value) == -1) return -1;
+    return 0;
+}
+
+int parse_query(struct http_request* req) {
+    char* next_param = req->query.ptr;
+    const char* pos_end = req->query.ptr + req->query.len;
+    int i = 0;
+
+    while (next_param < pos_end && i < 16) {
+        char* pos_amp = findchr(next_param, pos_end - next_param, '&');
+        if (pos_amp == NULL) pos_amp = pos_end;
+        if (pos_amp == next_param) { // 空要素は読み飛ばす. 先頭に`&`あるいは`&&`などのとき
+            next_param = pos_amp + 1;
+            continue;
+        }
+        if (parse_query_param(next_param, pos_amp - next_param, &req->params[i], req) == -1) {
+            return -1;
+        }
+
+        next_param = pos_amp + 1;
+        i++;
+    }
+    req->param_count = i;
+    return 0;
+}
+
+int parse_request_target(struct http_request* req) {
+    req->path = req->target;
+    if (req->target.len <= 1) {
+        return 0;
+    }
+
+    char* q = findchr(req->target.ptr, req->target.len, '?');
+    if (q == NULL) return 0;
+
+    struct str_slice path = {
+        .ptr = req->target.ptr,
+        .len = q - req->target.ptr,
+    };
+    req->path = path;
+
+    struct str_slice query = {
+        .ptr = q + 1,
+        .len = req->target.len - (q + 1 - req->target.ptr),
+    };
+    req->query = query;
+
+    // query to params
+    return parse_query(req);
+}
+
+int parse_http_request_head(char* buf, struct http_request* req) {
+    char* end_of_header = strstr(buf, "\r\n\r\n");
+    if (end_of_header == NULL) return -1;
+
+    int i = 0;
+    char* next_line = buf; // requestの先頭から
+    while (i < 32 && next_line < end_of_header) {
+        char* line_tail = strstr(next_line, "\r\n");
+        if (line_tail == NULL) break;
+
+        struct str_slice line;
+        line.ptr = next_line;
+        line.len = line_tail - next_line;
+
+        req->header_lines[i] = line;
+        next_line = line_tail + 2;
+        i++;
+    }
+    req->header_line_count = i;
+
+    if (parse_request_line(req) == -1) {
+        return -1;
+    }
+
+    for (size_t i = 1; i < req->header_line_count; i++) {
+        if (parse_request_header_field(
+                    req->header_lines[i].ptr,
+                    req->header_lines[i].len,
+                    &req->headers[i-1] // headers側は0始まりにする
+                    ) == -1) {
+            return -1;
+        }
+    }
+    req->header_count = req->header_line_count - 1;
+
+    if (parse_request_target(req) == -1) {
+        return -1;
+    }
+
+    return end_of_header - buf + 4; // +4 is "\r\n\r\n" length
+}
+
+struct http_query_param* get_query_param(struct http_request* req, char* name) {
+    for (int i = 0; i < req->param_count; i++) {
+        if (slice_eq(req->params[i].name, name) == 1) {
+            return &req->params[i];
+        }
+    }
+    return NULL;
+}
+
+struct http_response create_http_response(int status_code) {
+    enum http_status_code status;
+    switch (status_code) {
+        case 200:
+            status = HTTP_STATUS_OK;
+            break;
+        case 400:
+            status = HTTP_STATUS_BAD_REQUEST;
+            break;
+        case 404:
+            status = HTTP_STATUS_NOT_FOUND;
+            break;
+        default:
+            status = HTTP_STATUS_OK; // default to 200 OK
+            break;
+    }
+
+    return (struct http_response){
+        .version = HTTP_VERSION_1_1,
+        .status = status,
+        .headers = {0},
+        .header_count = 0,
+    };
+}
+
+const char* http_status_reason(enum http_status_code status) {
+    switch (status) {
+        case HTTP_STATUS_OK: return "OK";
+        case HTTP_STATUS_BAD_REQUEST: return "Bad Request";
+        case HTTP_STATUS_NOT_FOUND: return "Not Found";
+    }
+    return "Unknown";
+}
+
+ssize_t recv_http_body(int socket, char* buf, size_t size, size_t already_have, size_t content_length) {
+    size_t sum_received = already_have;
+
+    if (size <= content_length) { // buf must contain `\0` too
+        return -1; // buffer is too small
+    }
+
+    while(sum_received < content_length) {
+        ssize_t num_received = recv(socket,
+                                    buf + sum_received,
+                                    content_length - sum_received,
+                                    0);
+        if (num_received == -1) {
+            perror("recv error");
+            return -1;
+        }
+        if (num_received == 0) break;
+        sum_received += num_received;
+        buf[sum_received] = '\0';
+    }
+
+    if (sum_received < content_length) {
+        return -1;
+    }
+
+    buf[content_length] = '\0';
+    return content_length;
+}
+
+ssize_t recv_http_request(int socket, char* buf, size_t size, struct http_request* req) {
+    ssize_t recv_bytes = recv_http_header(socket, buf, size);
+    if (recv_bytes == -1) {
+        return -1;
+    }
+
+    int head_len = parse_http_request_head(buf, req);
+    if (head_len == -1) {
+        return -1;
+    }
+
+    struct http_header_field* content_length_field = get_header(req, "Content-Length");
+    if (content_length_field == NULL) {
+        req->body = (struct str_slice){ .ptr = NULL, .len = 0 };
+        return 0;
+    }
+
+    size_t content_length = 0;
+    if (slice_to_size_t(content_length_field->value, &content_length) == -1) {
+        return -1;
+    }
+
+    size_t already_have = recv_bytes - head_len;
+
+    char* body = buf+head_len;
+    recv_bytes = recv_http_body(socket, body, size-head_len, already_have, content_length);
+    if (recv_bytes == -1) {
+        return -1;
+    }
+    req->body = (struct str_slice){ .ptr = body, .len = content_length };
+
+    return 0;
+}

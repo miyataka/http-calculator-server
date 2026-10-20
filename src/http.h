@@ -1,0 +1,89 @@
+#include <sys/types.h>
+
+enum http_method {
+    HTTP_METHOD_UNKNOWN,
+    HTTP_METHOD_GET,
+    HTTP_METHOD_POST,
+    // TODO later
+};
+
+enum http_version {
+    HTTP_VERSION_UNKNOWN,
+    HTTP_VERSION_0_9,
+    HTTP_VERSION_1_0,
+    HTTP_VERSION_1_1,
+    // TODO later
+};
+
+enum http_status_code {
+    HTTP_STATUS_OK = 200,
+    HTTP_STATUS_BAD_REQUEST = 400,
+    HTTP_STATUS_NOT_FOUND = 404,
+    // TODO later
+};
+
+struct str_slice {
+  const char* ptr;
+  size_t len;
+};
+
+struct http_header_field {
+  struct str_slice name;
+  struct str_slice value;
+};
+
+struct http_query_param {
+  struct str_slice name;
+  struct str_slice value;
+};
+
+struct http_request {
+    enum http_method method;
+    struct str_slice target;
+    enum http_version version;
+
+    struct str_slice path;
+    struct str_slice query;
+
+    char decoded[512];
+    size_t decoded_len;
+
+    struct str_slice header_lines[32]; // raw line
+    size_t header_line_count;
+
+    struct http_header_field headers[32]; // parsed field
+    size_t header_count;
+
+    struct http_query_param params[16];
+    size_t param_count;
+
+    struct str_slice body;
+};
+
+struct http_response {
+    enum http_version version;
+    enum http_status_code status;
+
+    struct http_header_field headers[32]; // parsed field
+    size_t header_count;
+};
+
+ssize_t recv_http_header(int client_fd, char* buffer, size_t buffer_size);
+ssize_t response_fixed(int client_fd);
+int parse_http_request_head(char* buf, struct http_request* req);
+struct http_header_field* get_header(struct http_request* req, char* name);
+int slice_to_size_t(struct str_slice s, size_t* out);
+int slice_eq(struct str_slice s, const char* str);
+struct http_query_param* get_query_param(struct http_request* req, char* name);
+struct http_response create_http_response(int status_code);
+struct str_slice strip(struct str_slice slice);
+int slice_to_long(struct str_slice s, long int* out);
+
+const char* http_status_reason(enum http_status_code status);
+ssize_t send_response(int fd, enum http_status_code status, char* body, size_t body_len);
+
+int find_operator(struct str_slice s, size_t* pos);
+int parse_query(struct http_request* req);
+
+ssize_t recv_http_body(int socket, char* buffer, size_t buffer_size, size_t already_have, size_t content_length);
+ssize_t recv_http_request(int socket, char* buffer, size_t buffer_size, struct http_request* req);
